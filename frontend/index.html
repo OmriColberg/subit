@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Subit — מחולל כתוביות בעברית</title>
+  <title>Subit - מחולל כתוביות בעברית</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
@@ -336,19 +336,19 @@
       <button class="btn btn-ghost btn-sm" onclick="confirmClearFile()">✕ בחר קובץ אחר</button>
     </div>
 
-    <!-- Estimate box — appears after file selection -->
+    <!-- Estimate box - appears after file selection -->
     <div class="estimate-box" id="estimate-box">
       <div class="estimate-row">
         <span class="estimate-label">גודל קובץ</span>
-        <span class="estimate-value" id="est-size">—</span>
+        <span class="estimate-value" id="est-size">-</span>
       </div>
       <div class="estimate-row">
         <span class="estimate-label">אורך הסרטון</span>
-        <span class="estimate-value" id="est-duration">—</span>
+        <span class="estimate-value" id="est-duration">-</span>
       </div>
       <div class="estimate-row">
         <span class="estimate-label">זמן עיבוד משוער</span>
-        <span class="estimate-value" id="est-time">—</span>
+        <span class="estimate-value" id="est-time">-</span>
       </div>
       <!-- Start button (before transcription) -->
       <div id="start-section" style="margin-top:16px">
@@ -405,7 +405,7 @@
       <div class="tab-content active" id="tab-editor">
         <!-- Video player -->
         <div id="video-no-file" class="video-no-file">
-          🎬 הוידאו יופיע כאן לאחר העלאה — תוכל לצפות בכתוביות בזמן אמת
+          🎬 הוידאו יופיע כאן לאחר העלאה - תוכל לצפות בכתוביות בזמן אמת
         </div>
         <div class="video-wrap" id="video-wrap" style="display:none">
           <video id="video-player" controls controlsList="nodownload" preload="metadata"
@@ -418,8 +418,8 @@
         <div id="download-row" style="display:none;margin-bottom:8px">
           <button class="btn btn-primary" id="burn-btn" disabled
             style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:700;
-            opacity:0.5;cursor:not-allowed" title="בקרוב — אנחנו עובדים על זה!">
-            🎬 הורד סרטון עם כתוביות — בקרוב
+            opacity:0.5;cursor:not-allowed" title="בקרוב - אנחנו עובדים על זה!">
+            🎬 הורד סרטון עם כתוביות - בקרוב
           </button>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button class="btn btn-ghost btn-sm" onclick="downloadSRT()"
@@ -474,7 +474,7 @@
 <div class="modal-overlay" id="confirm-modal">
   <div class="modal">
     <h3>⚠️ איפוס הכל?</h3>
-    <p>כל הכתוביות שנוצרו ייעלמו. אם לא הורדת את קובץ ה-SRT — הוא יאבד.</p>
+    <p>כל הכתוביות שנוצרו ייעלמו. אם לא הורדת את קובץ ה-SRT - הוא יאבד.</p>
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">ביטול</button>
       <button class="btn" style="background:var(--danger);color:#fff" onclick="resetAll()">כן, אפס</button>
@@ -501,9 +501,9 @@
       <div class="form-group">
         <label class="form-label">מיקום בסרטון</label>
         <select class="form-control" id="burn-position" onchange="updateBurnPreview();applyBurnStylesToOverlay();if(this.id==='burn-position')loadSubtitleTrack()">
-          <option value="very-bottom">תחתית — צמוד</option>
-          <option value="bottom" selected>תחתית — רגיל</option>
-          <option value="center-bottom">מרכז — תחתון</option>
+          <option value="very-bottom">תחתית - צמוד</option>
+          <option value="bottom" selected>תחתית - רגיל</option>
+          <option value="center-bottom">מרכז - תחתון</option>
           <option value="center">מרכז</option>
         </select>
       </div>
@@ -575,7 +575,7 @@
 <div id="toast"><span class="toast-icon"></span><span id="toast-msg"></span></div>
 
 <script>
-const API = 'https://subit-ifhy.onrender.com';
+const API = 'http://localhost:8000';
 
 // ── STATE ─────────────────────────────────────────────────────────
 let state = { videoId:null, filename:null, segments:[], videoBlobUrl:null };
@@ -640,7 +640,7 @@ document.getElementById('file-input').addEventListener('change', e=>{
   if (e.target.files.length) handleFileSelected(e.target.files[0]);
 });
 
-// File selection — show estimate box with start button
+// File selection - show estimate box with start button
 const MAX_FILE_MB = 500;
 
 function handleFileSelected(file) {
@@ -665,8 +665,8 @@ function handleFileSelected(file) {
 
   // Show estimate
   document.getElementById('est-size').textContent = sizeMB.toFixed(1)+' MB';
-  document.getElementById('est-time').textContent = '—';
-  document.getElementById('est-duration').textContent = '—';
+  document.getElementById('est-time').textContent = '-';
+  document.getElementById('est-duration').textContent = '-';
   document.getElementById('estimate-box').style.display = 'block';
   document.getElementById('start-section').style.display = 'block';
   document.getElementById('timer-section').style.display = 'none';
@@ -807,7 +807,7 @@ async function uploadFile(file) {
     setStep(3);
 
     if (hint) {
-      toast('info', 'תמלול הושלם — מעדכן לפי הטקסט שסיפקת...');
+      toast('info', 'תמלול הושלם - מעדכן לפי הטקסט שסיפקת...');
       await runAlignWithTranscript(hint);
     } else {
       // Auto AI fix
@@ -891,7 +891,7 @@ function normalizeTimeInput(el) {
       // End must be > start
       const startSec = srtToSec(seg.start);
       if (sec <= startSec) {
-        // Reject — revert to previous value
+        // Reject - revert to previous value
         el.value = formatTimeDisplay(seg.end);
         toast('error', 'זמן סיום חייב להיות אחרי זמן התחלה');
         return;
@@ -899,7 +899,7 @@ function normalizeTimeInput(el) {
     } else if (field === 'start') {
       // Start must be < end (after cascade adjustments)
       const endSec = srtToSec(seg.end);
-      // Allow start > end — applyTimeCascade will fix end
+      // Allow start > end - applyTimeCascade will fix end
     }
 
     state.segments[idx][field] = normalized;
@@ -920,7 +920,7 @@ function applyTimeCascade(idx, field, newVal) {
       const startSec = srtToSec(segs[i].start);
       const dur      = srtToSec(segs[i].end) - startSec;
       if (startSec < prevEnd - 0.001) {
-        // Collision — push forward
+        // Collision - push forward
         segs[i].start = secToSrt(prevEnd);
         segs[i].end   = secToSrt(prevEnd + dur);
         prevEnd = prevEnd + dur;
@@ -957,7 +957,7 @@ function applyTimeCascade(idx, field, newVal) {
         } else break;
       }
     }
-    // If start didn't pass end — nothing to cascade, END unchanged
+    // If start didn't pass end - nothing to cascade, END unchanged
     renderSRTList();
   }
 }
@@ -989,14 +989,14 @@ function onPlainTextChange() {
 }
 
 function distributePlainText(raw) {
-  // Split by newlines first — each line = one subtitle
+  // Split by newlines first - each line = one subtitle
   const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
 
   if (lines.length === state.segments.length) {
     // Perfect 1:1 mapping
     lines.forEach((line,i)=>{ state.segments[i].text = line; });
   } else if (lines.length > 1) {
-    // More lines than segments — merge or redistribute by time
+    // More lines than segments - merge or redistribute by time
     const totalDur = state.segments.reduce((s,seg)=>s+segDur(seg),0)||1;
     // Distribute line-groups proportionally
     const allText = lines.join(' ');
@@ -1010,7 +1010,7 @@ function distributePlainText(raw) {
       wi+=count;
     });
   } else {
-    // Single paragraph — distribute by time
+    // Single paragraph - distribute by time
     const words = raw.split(/\s+/).filter(Boolean);
     const totalDur = state.segments.reduce((s,seg)=>s+segDur(seg),0)||1;
     let wi=0;
@@ -1118,7 +1118,7 @@ function stopAIProgress() {
 }
 
 async function autoAiFix() {
-  // Runs automatically after transcription — silent, shows status
+  // Runs automatically after transcription - silent, shows status
 
   startAIProgress('משפר דיוק כתוביות...');
   try {
@@ -1128,15 +1128,15 @@ async function autoAiFix() {
     });
     if (!res.ok) throw new Error('AI fix failed silently');
     const data = await res.json();
-    // No pushUndo for auto AI fix — not a user action
+    // No pushUndo for auto AI fix - not a user action
     state.segments = data.segments;
     renderSRTList(); syncPlainText(); await persistSRT();
 
-    toast('success', `תמלול הושלם ותוקן — ${state.segments.length} כתוביות`);
+    toast('success', `תמלול הושלם ותוקן - ${state.segments.length} כתוביות`);
   } catch(err) {
-    // Silent fail — just show transcription success
+    // Silent fail - just show transcription success
 
-    toast('success', `תמלול הושלם — ${state.segments.length} כתוביות`);
+    toast('success', `תמלול הושלם - ${state.segments.length} כתוביות`);
   } finally {
     stopAIProgress();
   }
@@ -1169,10 +1169,10 @@ async function aiFixText(){
 function copyForClaude(){
   const lines = state.segments.map(s=>`${s.index}. ${s.text}`).join('\n');
   const maxW  = parseInt(document.getElementById('max-words').value)||0;
-  const maxWLine = maxW>0 ? `\nחשוב: כל כתובית יכולה להכיל לכל היותר ${maxW} מילים. אם שורה ארוכה יותר — חלק אותה לשורות נפרדות בשיקול דעת לפי ההקשר, ועדכן את המספור בהתאם.` : '';
+  const maxWLine = maxW>0 ? `\nחשוב: כל כתובית יכולה להכיל לכל היותר ${maxW} מילים. אם שורה ארוכה יותר - חלק אותה לשורות נפרדות בשיקול דעת לפי ההקשר, ועדכן את המספור בהתאם.` : '';
   const prompt = `להלן כתוביות בעברית שנוצרו אוטומטית ועלולות להכיל שגיאות תמלול.
 תשמור על הטקסט בדיוק כמו שהוא, רק תתקן מילים שברור שאינן נכונות למילים הנכונות.
-אם אתה לא בטוח — אל תיגע. החזר בדיוק אותן שורות עם אותם מספרים בפורמט: מספר. טקסט${maxWLine}
+אם אתה לא בטוח - אל תיגע. החזר בדיוק אותן שורות עם אותם מספרים בפורמט: מספר. טקסט${maxWLine}
 
 ${lines}`;
   navigator.clipboard.writeText(prompt).then(()=>{
@@ -1196,11 +1196,11 @@ function applyPastedCorrection(){
     if (m) newSegs.push({ index:parseInt(m[1]), text:m[2].trim() });
   }
   if (newSegs.length > 0){
-    // If count matches — update text only
+    // If count matches - update text only
     if (newSegs.length === state.segments.length){
       newSegs.forEach((ns,i)=>{ state.segments[i].text=ns.text; });
     } else {
-      // More segments (e.g. after splitting long lines) — rebuild with interpolated timestamps
+      // More segments (e.g. after splitting long lines) - rebuild with interpolated timestamps
       const totalDur = state.segments.reduce((s,seg)=>s+segDur(seg),0)||1;
       const totalWords = newSegs.reduce((s,ns)=>s+ns.text.split(' ').length,0)||1;
       let t=srtToSec(state.segments[0]?.start||'00:00:00,000');
@@ -1248,7 +1248,7 @@ async function runAlignWithTranscript(transcript) {
 async function alignFromPlainText() {
   const transcript = document.getElementById('transcript-hint').value.trim();
   if (!transcript) {
-    toast('error', 'לא הוזן טקסט מקורי — פתח את תיבת הטקסט למעלה והדבק');
+    toast('error', 'לא הוזן טקסט מקורי - פתח את תיבת הטקסט למעלה והדבק');
     return;
   }
   const btn = document.getElementById('align-plain-btn');
@@ -1295,7 +1295,7 @@ function srtToSec2(ts) {
   } catch { return 0; }
 }
 
-// loadSubtitleTrack / scheduleVttSync — no-op (using overlay instead)
+// loadSubtitleTrack / scheduleVttSync - no-op (using overlay instead)
 function loadSubtitleTrack() { /* overlay-based, no track needed */ }
 let vttSyncTimer = null;
 function scheduleVttSync() { /* no-op */ }
@@ -1316,7 +1316,7 @@ function seekToSubtitleIfNotFocused(e, idx) {
   const endSec = srtToSec(seg.end);
   player.currentTime = startSec + (endSec - startSec) / 2;
   if (wasEnded) player.play().catch(()=>{});
-  // Highlight immediately — timeupdate will confirm same subtitle
+  // Highlight immediately - timeupdate will confirm same subtitle
   setActiveSubtitle(idx);
   document.getElementById('video-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
@@ -1523,7 +1523,7 @@ function animateProgress(from,to,dur){
   const bar=document.getElementById('progress-bar'),s=performance.now();
   (function f(now){ const t=Math.min((now-s)/dur,1); bar.style.width=(from+(to-from)*(t<.5?2*t*t:-1+(4-2*t)*t))+'%'; if(t<1)requestAnimationFrame(f); })(performance.now());
 }
-// Asymptotic crawl — moves fast at first, then slows to a near-stop (never reaches cap)
+// Asymptotic crawl - moves fast at first, then slows to a near-stop (never reaches cap)
 function animateProgressSlow(start, cap) {
   const bar = document.getElementById('progress-bar');
   const t0  = Date.now();
