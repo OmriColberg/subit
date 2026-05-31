@@ -18,3 +18,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+backend/__pycache__/
+*.mp4
+*.mov
+backend/uploads/
