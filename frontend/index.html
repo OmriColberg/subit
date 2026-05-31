@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Subit — מחולל כתוביות בעברית</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0a0f;--surface:#111118;--surface2:#1a1a24;
+      --border:#2a2a38;--border2:#3a3a50;
+      --text:#e8e8f0;--muted:#6b6b88;
+      --accent:#f54242;--accent2:#EFBF04;
+      --danger:#e85050;--success:#50c87a;
+      --glow:rgba(245,66,66,0.18);
+      --font-he:'Heebo',sans-serif;--font-mono:'Space Mono',monospace;
+    }
+    html.light{--bg:#f5f5f0;--surface:#fff;--surface2:#f0f0eb;--border:#ddddd5;--border2:#ccccbf;--text:#1a1a2e;--muted:#888880;--glow:rgba(245,66,66,0.1)}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-he);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s}
+    .page{max-width:900px;margin:0 auto;padding:0 24px 80px}
+
+    header{padding:40px 0 36px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:40px;gap:12px}
+    .logo{display:flex;align-items:center;gap:14px;flex-shrink:0}
+    .logo-icon{width:44px;height:44px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 24px var(--glow)}
+    .logo h1{font-size:22px;font-weight:700;letter-spacing:-.5px}
+    .logo h1 span{color:var(--accent)}
+    .theme-btn{padding:8px 14px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--text);font-family:var(--font-he);transition:all .2s;white-space:nowrap}
+    .theme-btn:hover{border-color:var(--accent)}
+
+    .steps{display:flex;margin-bottom:36px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .step{flex:1;padding:13px 12px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--muted);border-left:1px solid var(--border);transition:all .3s}
+    .step:last-child{border-left:none}
+    .step-num{width:24px;height:24px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;flex-shrink:0;transition:all .3s}
+    .step.active{color:var(--text)}.step.active .step-num{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+    .step.done{color:var(--success)}.step.done .step-num{background:var(--success);border-color:var(--success);color:#000}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;margin-bottom:4px;transition:border-color .3s,background .3s}
+    .card:hover{border-color:var(--border2)}
+    .card-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:24px;display:flex;align-items:center;gap:8px}
+    .card-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:2px}
+
+    /* ── Settings bar (above dropzone) ── */
+    .settings-bar{display:flex;align-items:center;gap:20px;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;flex-wrap:wrap}
+    .setting-item{display:flex;align-items:center;gap:10px}
+    .setting-label{font-size:13px;color:var(--muted);white-space:nowrap}
+    .setting-input{width:72px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;text-align:center;transition:border-color .2s}
+    .setting-input:focus{border-color:var(--accent)}
+    .setting-hint{font-size:11px;color:var(--muted)}
+
+    /* ── Drop zone ── */
+    #drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:48px 24px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+    #drop-zone::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,var(--glow) 0%,transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none}
+    #drop-zone:hover::before,#drop-zone.dragover::before{opacity:1}
+    #drop-zone:hover,#drop-zone.dragover{border-color:var(--accent)}
+    #drop-zone.dragover{transform:scale(1.01)}
+    .upload-icon{font-size:48px;margin-bottom:16px;display:block;animation:float 3s ease-in-out infinite}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+    .upload-title{font-size:18px;font-weight:600;margin-bottom:8px}
+    .upload-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+    #file-input{display:none}
+
+    /* ── File chip + start button ── */
+    .file-chip{display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;font-size:13px}
+    .file-chip-name{font-weight:500;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .file-chip-size{color:var(--muted);font-size:11px}
+    .start-row{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+
+    /* ── Transcript hint ── */
+    .t-arrow{transition:transform .2s;display:inline-block}
+    .transcript-hint-box{display:none;margin-top:12px}
+    .transcript-hint-box.open{display:block}
+    .transcript-hint-area{width:100%;min-height:90px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;color:var(--text);font-family:var(--font-he);font-size:14px;line-height:1.7;direction:rtl;resize:vertical;outline:none;transition:border-color .2s}
+    .transcript-hint-area:focus{border-color:var(--accent)}
+    .hint-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+
+    /* ── Estimate + progress ── */
+    .estimate-box{margin-top:20px;padding:16px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;display:none}
+    .estimate-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .estimate-label{font-size:15px;color:var(--muted);font-weight:500}
+    .estimate-value{font-size:15px;font-weight:700;color:var(--accent);font-family:var(--font-mono)}
+    .timer-display{font-size:32px;font-weight:700;font-family:var(--font-mono);color:var(--text);letter-spacing:3px;text-align:center;margin:12px 0 4px}
+    .timer-sub{font-size:11px;color:var(--muted);text-align:center}
+    #progress-section{display:none;margin-top:16px}
+    .progress-wrap{background:var(--surface2);border-radius:100px;height:6px;overflow:hidden;margin:12px 0}
+    .progress-bar{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:100px;transition:width .4s ease;position:relative}
+    .progress-bar::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4));animation:shimmer 1.2s infinite}
+    @keyframes shimmer{0%,100%{opacity:0}50%{opacity:1}}
+    .progress-status{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+    /* ── Results ── */
+    #results-section{display:none}
+    .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
+    #autosave-indicator{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;opacity:0;transition:opacity .4s;margin-right:auto}
+    #autosave-indicator.show{opacity:1}
+    .saved-dot{width:6px;height:6px;border-radius:50%;background:var(--success)}
+
+    /* ── Buttons ── */
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font-family:var(--font-he);font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+    .btn:active{transform:scale(.97)}
+    .btn-primary{background:var(--accent);color:#fff;box-shadow:0 4px 20px var(--glow)}
+    .btn-primary:hover{filter:brightness(1.1);box-shadow:0 4px 28px var(--glow),0 0 0 3px rgba(245,66,66,.15)}
+    .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+    .btn-secondary:hover{background:var(--border)}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+    .btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+    .btn-ai{background:rgba(80,200,122,.12);color:var(--success);border:1px solid rgba(80,200,122,.3)}
+    .btn-ai:hover{background:rgba(80,200,122,.2)}
+    .btn-align{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+    .btn-align:hover{background:rgba(59,130,246,.18)}
+    .btn-undo{background:rgba(107,107,136,.1);color:var(--muted);border:1px solid var(--border)}
+    .btn-undo:hover{color:var(--text);border-color:var(--border2)}
+    .btn-sm{padding:7px 14px;font-size:12px}
+    .btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px}
+    .tab{flex:1;padding:10px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-he);transition:all .2s}
+    .tab.active{background:var(--surface);color:var(--text);border:1px solid var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+    .tab-content{display:none}.tab-content.active{display:block}
+
+    /* ── SRT editor ── */
+    .srt-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+    .srt-count{font-size:13px;color:var(--muted);flex:1}
+    .srt-list{max-height:290px;overflow-y:auto}
+    .srt-list::-webkit-scrollbar{width:4px}
+    .srt-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+    .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
+    .srt-item{position:relative}
+    .srt-item:hover{border-color:var(--border2)}.srt-item:focus-within{border-color:var(--accent)}.srt-item.active-sub{border-color:var(--accent)!important;background:rgba(245,66,66,.07)}
+    /* Edit hint badge */
+    .srt-item::after{
+      content:'✏️ לחץ לעריכה';
+      position:absolute;top:6px;left:8px;
+      font-size:10px;color:var(--muted);
+      opacity:0;transition:opacity .2s;
+      pointer-events:none;white-space:nowrap;
+    }
+    .srt-item:hover::after{opacity:1}
+    .srt-item:focus-within::after{opacity:0}
+    /* Textarea shows cursor and gets subtle bg on hover */
+    .text-input{cursor:text}
+    .srt-item:hover .text-input{background:rgba(255,255,255,.03)}
+    html.light .srt-item:hover .text-input{background:rgba(0,0,0,.03)}
+    .srt-item:hover .time-input{background:rgba(255,255,255,.03)}
+    html.light .srt-item:hover .time-input{background:rgba(0,0,0,.03)}
+    .srt-num{font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-top:2px;text-align:center}
+    .srt-time{font-family:var(--font-mono);font-size:14px;color:var(--accent);margin-bottom:6px;display:flex;gap:4px;align-items:center}
+    .time-input{background:transparent;border:none;font-family:var(--font-mono);font-size:13px;color:var(--accent);width:82px;outline:none;border-bottom:1px solid transparent;transition:border-color .2s}
+    .time-input:focus{border-bottom-color:var(--accent)}
+    .text-input{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font-he);font-size:15px;resize:none;outline:none;direction:rtl;line-height:1.6}
+
+    #plain-text-area{width:100%;min-height:200px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;color:var(--text);font-family:var(--font-he);font-size:15px;line-height:1.8;direction:rtl;resize:vertical;outline:none;transition:border-color .2s}
+    #plain-text-area:focus{border-color:var(--border2)}
+
+    /* ── Burn ── */
+    .burn-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    .form-group{display:flex;flex-direction:column;gap:6px}
+    .form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+    .form-control{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-he);font-size:14px;outline:none;transition:border-color .2s;appearance:none}
+    .form-control:focus{border-color:var(--accent)}
+    select.form-control{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%236b6b88' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 12px center;padding-left:32px}
+    input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border);margin-top:8px;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+    .range-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* ── Modals ── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .25s}
+    .modal-overlay.show{opacity:1;pointer-events:all}
+    .modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:32px;max-width:480px;width:90%;transform:translateY(16px);transition:transform .25s;box-shadow:0 24px 64px rgba(0,0,0,.5)}
+    .modal-overlay.show .modal{transform:translateY(0)}
+    .modal h3{font-size:17px;margin-bottom:8px}
+    .modal p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+    .modal-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-he);font-size:14px;outline:none;margin-bottom:4px;transition:border-color .2s;direction:rtl;resize:vertical}
+    .modal-input:focus{border-color:var(--accent)}
+    .modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+
+    /* ── Toast ── */
+    #toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;opacity:0;transition:all .3s;z-index:999;display:flex;align-items:center;gap:10px;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    #toast.success .toast-icon::before{content:'✓';color:var(--success)}
+    #toast.error   .toast-icon::before{content:'✕';color:var(--danger)}
+    #toast.info    .toast-icon::before{content:'ℹ';color:var(--accent2)}
+
+    /* AI loading state for editor */
+    .srt-list-wrap{position:relative}
+    .srt-loading-overlay{
+      display:none;position:absolute;inset:0;
+      background:rgba(var(--bg-rgb,10,10,15),.7);
+      border-radius:8px;z-index:10;
+      align-items:center;justify-content:center;flex-direction:column;gap:12px;
+    }
+    html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
+    .srt-loading-overlay.show{display:flex}
+    .spinner{
+      width:36px;height:36px;border-radius:50%;
+      border:3px solid var(--border2);
+      border-top-color:var(--accent);
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .srt-loading-overlay span{font-size:13px;color:var(--muted)}
+    /* ── Mode selector ── */
+    .mode-selector{display:flex;gap:12px;margin-bottom:16px}
+    .mode-btn{
+      flex:1;padding:16px 12px;border-radius:12px;cursor:pointer;
+      background:var(--surface2);border:2px solid var(--border);
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+      transition:all .2s;font-family:var(--font-he);
+    }
+    .mode-btn:hover{border-color:var(--border2);background:var(--border)}
+    .mode-btn.active{border-color:var(--accent);background:rgba(245,66,66,.07);box-shadow:0 0 0 1px var(--accent)}
+    .mode-icon{font-size:28px}
+    .mode-title{font-size:15px;font-weight:700;color:var(--text)}
+    .mode-sub{font-size:12px;color:var(--muted)}
+    /* ── Burn preview ── */
+    .burn-preview{
+      position:relative;background:#444;border-radius:10px;
+      height:90px;margin-bottom:20px;overflow:hidden;
+      border:1px solid var(--border2);
+      display:flex;align-items:flex-end;justify-content:center;
+    }
+    .burn-preview-text{
+      position:absolute;padding:6px 16px;
+      font-size:24px;font-weight:400;
+      color:white;text-shadow:2px 2px 4px black;
+      font-family:Arial,sans-serif;
+      transition:all .2s;white-space:nowrap;
+      bottom:10px;text-align:center;width:100%;
+    }
+    /* ── Video player ── */
+    .video-wrap{
+      position:relative;background:#000;border-radius:10px;
+      overflow:hidden;margin-bottom:16px;
+      max-height:320px;display:flex;align-items:center;justify-content:center;
+    }
+    .video-wrap video{ width:100%;max-height:320px;display:block;outline:none; }
+    .video-sub-overlay{
+      position:absolute;left:50%;transform:translateX(-50%);
+      width:92%;text-align:center;pointer-events:none;
+      font-size:22px;font-weight:600;line-height:1.4;
+      color:#fff;text-shadow:2px 2px 3px #000,-1px -1px 2px #000;
+      transition:opacity .1s;z-index:10;bottom:18px;
+    }
+    /* Fullscreen: overlay stays visible because it's inside .video-wrap */
+    .video-wrap:fullscreen{ max-height:100vh; }
+    .video-wrap:-webkit-full-screen{ max-height:100vh; }
+    .video-wrap video:fullscreen,.video-wrap video:-webkit-full-screen{
+      max-height:100vh;width:100%;
+    }
+    .video-no-file{
+      padding:32px;text-align:center;color:var(--muted);
+      font-size:13px;background:var(--surface2);border-radius:10px;
+      margin-bottom:16px;border:1px dashed var(--border);
+    }
+    @media(max-width:600px){.steps{display:none}.card{padding:16px}.burn-grid{grid-template-columns:1fr}.settings-bar{gap:8px;flex-direction:column}.mode-selector{gap:8px}.mode-btn{padding:12px 8px}.mode-icon{font-size:22px}.mode-title{font-size:13px}.action-row{gap:8px}.btn{font-size:13px;padding:8px 12px}.btn-sm{font-size:11px;padding:6px 10px}}
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎬</div>
+      <div>
+        <h1><span>Subit</span></h1>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">מחולל כתוביות בעברית</div>
+      </div>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ יהי אור</button>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="step-1"><div class="step-num">1</div>העלאת קובץ</div>
+    <div class="step" id="step-2"><div class="step-num">2</div>תמלול</div>
+    <div class="step" id="step-3"><div class="step-num">3</div>עריכה והורדה</div>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card" id="upload-card">
+    <div class="card-title">העלאת קובץ וידאו או אודיו</div>
+
+    <!-- Mode selector -->
+    <div class="mode-selector" id="mode-selector">
+      <button class="mode-btn active" id="mode-file-only" onclick="selectMode('file-only')">
+        <span class="mode-icon">🎥</span>
+        <span class="mode-title">יש לי קובץ וידאו/אודיו</span>
+        <span class="mode-sub">ניצור כתוביות אוטומטיות</span>
+      </button>
+      <button class="mode-btn" id="mode-with-text" onclick="selectMode('with-text')">
+        <span class="mode-icon">📝</span>
+        <span class="mode-title">יש לי גם טקסט מוכן</span>
+        <span class="mode-sub" style="color:#60a5fa;font-weight:600">כתוביות מדויקות יותר ✨</span>
+      </button>
+    </div>
+
+    <!-- Transcript textarea (shown in with-text mode) -->
+    <div id="transcript-area" style="display:none;margin-bottom:16px">
+      <textarea class="transcript-hint-area" id="transcript-hint"
+        placeholder="הדבק כאן את הטקסט המלא של הסרטון..."
+        style="min-height:120px;font-size:15px"></textarea>
+    </div>
+
+    <!-- Settings bar -->
+    <div class="settings-bar">
+      <div class="setting-item">
+        <span class="setting-label">מקסימום מילים בכתובית:</span>
+        <input type="number" class="setting-input" id="max-words" min="1" max="30"
+          value="4" title="ריק = כמות מילים לפי ההיגיון"/>
+        <span class="setting-hint">ריק = כמות מילים לפי ההיגיון</span>
+      </div>
+    </div>
+
+    <!-- Drop zone (hidden after file picked) -->
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <input type="file" id="file-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg"/>
+      <span class="upload-icon">🎥</span>
+      <div class="upload-title">העלה קובץ ותקבל כתוביות בעברית תוך דקות</div>
+      <div class="upload-sub">MP4, MOV, AVI, MKV, WebM, MP3, WAV, M4A</div>
+      <button class="btn btn-primary" type="button"
+        onclick="event.stopPropagation();document.getElementById('file-input').click()">
+        צור כתוביות
+      </button>
+    </div>
+
+    <!-- File selected state (shown instead of drop zone) -->
+    <div id="file-selected-state" style="display:none;padding:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;text-align:center">
+      <div style="font-size:36px;margin-bottom:10px">🎥</div>
+      <div id="selected-filename" style="font-size:16px;font-weight:600;margin-bottom:4px;word-break:break-all"></div>
+      <div id="selected-filesize" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="confirmClearFile()">✕ בחר קובץ אחר</button>
+    </div>
+
+    <!-- Estimate box — appears after file selection -->
+    <div class="estimate-box" id="estimate-box">
+      <div class="estimate-row">
+        <span class="estimate-label">גודל קובץ</span>
+        <span class="estimate-value" id="est-size">—</span>
+      </div>
+      <div class="estimate-row">
+        <span class="estimate-label">אורך הסרטון</span>
+        <span class="estimate-value" id="est-duration">—</span>
+      </div>
+      <div class="estimate-row">
+        <span class="estimate-label">זמן עיבוד משוער</span>
+        <span class="estimate-value" id="est-time">—</span>
+      </div>
+      <!-- Start button (before transcription) -->
+      <div id="start-section" style="margin-top:16px">
+        <button class="btn btn-primary" id="start-btn" onclick="startTranscription()"
+          style="width:100%;justify-content:center;padding:14px 20px;font-size:16px;font-weight:700">
+          🎬 צור לי כתוביות
+        </button>
+
+      </div>
+      <!-- Timer -->
+      <div id="timer-section" style="display:none">
+        <div class="timer-display" id="timer-display">0%</div>
+        <div class="timer-sub">🔥 הכתוביות על האש...</div>
+      </div>
+    </div>
+
+    <div id="progress-section">
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      </div>
+      <div class="progress-status">
+        <div class="dot"></div>
+        <span id="progress-label">מעלה קובץ...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section">
+    <!-- סטטוס + קובץ חדש -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <div id="autosave-indicator"><div class="saved-dot"></div><span>נשמר</span></div>
+    </div>
+    <!-- AI progress (shown during AI fix/align) -->
+    <div id="ai-progress" style="display:none;margin-bottom:16px">
+      <div class="progress-wrap">
+        <div class="progress-bar" id="ai-progress-bar" style="width:5%"></div>
+      </div>
+      <div class="progress-status" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="dot"></div>
+          <span id="ai-progress-label">שולח ל-AI...</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--accent)" id="ai-timer-display">0%</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('editor')">✏️ עורך כתוביות</button>
+        <button class="tab" onclick="switchTab('text')">📝 טקסט גולמי לעריכה</button>
+      </div>
+
+      <div class="tab-content active" id="tab-editor">
+        <!-- Video player -->
+        <div id="video-no-file" class="video-no-file">
+          🎬 הוידאו יופיע כאן לאחר העלאה — תוכל לצפות בכתוביות בזמן אמת
+        </div>
+        <div class="video-wrap" id="video-wrap" style="display:none">
+          <video id="video-player" controls controlsList="nodownload" preload="metadata"
+            ontimeupdate="syncOverlaySubtitle()">
+          </video>
+          <div class="video-sub-overlay" id="video-sub-overlay"></div>
+        </div>
+
+        <!-- Download buttons below video -->
+        <div id="download-row" style="display:none;margin-bottom:8px">
+          <button class="btn btn-primary" id="burn-btn" disabled
+            style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:700;
+            opacity:0.5;cursor:not-allowed" title="בקרוב — אנחנו עובדים על זה!">
+            🎬 הורד סרטון עם כתוביות — בקרוב
+          </button>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-ghost btn-sm" onclick="downloadSRT()"
+              style="flex:1;justify-content:center;font-size:12px">
+              ⬇ הורד קובץ SRT
+            </button>
+            <button onclick="openBurnSettings()"
+              style="flex:1;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;
+              background:var(--surface2);border:1px solid var(--border2);
+              cursor:pointer;font-family:var(--font-he);color:var(--text);
+              display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s"
+              onmouseover="this.style.borderColor='var(--accent)'"
+              onmouseout="this.style.borderColor='var(--border2)'">
+              🎨 עיצוב כתוביות
+            </button>
+          </div>
+          <div id="burn-progress" style="display:none;margin-top:10px">
+            <div class="progress-wrap"><div class="progress-bar" id="burn-bar" style="width:30%"></div></div>
+            <div class="progress-status"><div class="dot"></div><span>צורב כתוביות לסרטון...</span></div>
+          </div>
+        </div>
+        <div class="srt-toolbar">
+          <span class="srt-count" id="srt-count"></span>
+          <span style="font-size:11px;color:var(--muted)">✏️ לחץ על כתובית לעריכה | לחיצה ראשונה = קפיצה בסרטון</span>
+          <button class="btn btn-undo btn-sm" onclick="undoChange()" id="undo-btn" style="display:none">↩ בטל שינוי</button>
+        </div>
+        <div class="srt-list-wrap">
+          <div class="srt-loading-overlay" id="srt-loading-overlay">
+            <div class="spinner"></div>
+            <span id="srt-loading-label">AI עובד...</span>
+          </div>
+          <div class="srt-list" id="srt-list"></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-text">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+          עריכה כאן מסתנכרנת לכתוביות. שורה חדשה = כתובית חדשה (אם מספר השורות תואם).
+        </p>
+        <textarea id="plain-text-area" spellcheck="false" oninput="onPlainTextChange()"></textarea>
+        <div style="margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="copyText()">📋 העתק הכל</button>
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm reset -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <h3>⚠️ איפוס הכל?</h3>
+    <p>כל הכתוביות שנוצרו ייעלמו. אם לא הורדת את קובץ ה-SRT — הוא יאבד.</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">ביטול</button>
+      <button class="btn" style="background:var(--danger);color:#fff" onclick="resetAll()">כן, אפס</button>
+    </div>
+  </div>
+</div>
+
+<!-- Burn settings modal -->
+<div class="modal-overlay" id="burn-settings-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>🎨 עיצוב כתוביות</h3>
+    <p style="margin-bottom:12px">השינויים יתעדכנו בסרטון בזמן אמת</p>
+    <div class="burn-preview" style="margin-bottom:16px">
+      <div class="burn-preview-text" id="burn-preview-text">זאת דוגמה לפי ההגדרות שבחרת</div>
+    </div>
+    <div class="burn-grid" style="margin-top:0">
+      <div class="form-group">
+        <label class="form-label">פונט</label>
+        <select class="form-control" id="burn-font" onchange="updateBurnPreview();applyBurnStylesToOverlay();if(this.id==='burn-position')loadSubtitleTrack()">
+          <option>Arial</option><option>David</option><option>Tahoma</option>
+          <option>Times New Roman</option><option>Courier New</option><option>Georgia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">מיקום בסרטון</label>
+        <select class="form-control" id="burn-position" onchange="updateBurnPreview();applyBurnStylesToOverlay();if(this.id==='burn-position')loadSubtitleTrack()">
+          <option value="very-bottom">תחתית — צמוד</option>
+          <option value="bottom" selected>תחתית — רגיל</option>
+          <option value="center-bottom">מרכז — תחתון</option>
+          <option value="center">מרכז</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">צבע טקסט</label>
+        <select class="form-control" id="burn-color" onchange="updateBurnPreview();applyBurnStylesToOverlay();if(this.id==='burn-position')loadSubtitleTrack()">
+          <option value="white">⬜ לבן</option>
+          <option value="yellow">💛 צהוב</option>
+          <option value="black">⬛ שחור</option>
+          <option value="cyan">🩵 תכלת</option>
+          <option value="lime">💚 ירוק בהיר</option>
+          <option value="red">❤️ אדום</option>
+          <option value="orange">🟠 כתום</option>
+          <option value="pink">🩷 ורוד</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">צבע מסגרת / צל</label>
+        <select class="form-control" id="burn-outline" onchange="updateBurnPreview();applyBurnStylesToOverlay();if(this.id==='burn-position')loadSubtitleTrack()">
+          <option value="none" selected>ללא</option>
+          <option value="black">שחור</option>
+          <option value="white">לבן</option>
+          <option value="dark-shadow">צל כהה</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">גודל פונט: <span id="font-size-val">16</span>px</label>
+        <input type="range" min="14" max="56" value="16" id="burn-fontsize"
+          oninput="document.getElementById('font-size-val').textContent=this.value;updateBurnPreview();scheduleApplyStyles()"/>
+        <div class="range-label"><span>14</span><span>56</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">סגנון טקסט</label>
+        <select class="form-control" id="burn-style" onchange="updateBurnPreview();applyBurnStylesToOverlay();if(this.id==='burn-position')loadSubtitleTrack()">
+          <option value="normal">רגיל</option>
+          <option value="bold">מודגש</option>
+          <option value="italic">נטוי</option>
+          <option value="bold-italic">מודגש + נטוי</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin:4px 0 20px">
+      <label class="form-label">שקיפות רקע: <span id="bg-opacity-val">0</span>%</label>
+      <input type="range" min="0" max="80" value="0" id="burn-bg-opacity"
+        oninput="document.getElementById('bg-opacity-val').textContent=this.value;updateBurnPreview();scheduleApplyStyles()"/>
+      <div class="range-label"><span>ללא רקע</span><span>רקע כהה</span></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="resetBurnDefaults()">↩ חזור לברירת מחדל</button>
+      <button class="btn btn-primary" onclick="closeModal('burn-settings-modal')">סגור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Paste correction modal -->
+<div class="modal-overlay" id="paste-modal">
+  <div class="modal">
+    <h3>📥 הדבק את התיקון מ-Claude</h3>
+    <p>הדבק כאן את התשובה שקיבלת. פורמט: "1. טקסט" שורה לכל כתובית.</p>
+    <textarea class="modal-input" id="paste-area" rows="10" style="height:200px;font-size:14px"
+      placeholder="1. הטקסט המתוקן&#10;2. שורה שנייה&#10;3. ..."></textarea>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('paste-modal')">ביטול</button>
+      <button class="btn btn-primary" onclick="applyPastedCorrection()">החל תיקון</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span class="toast-icon"></span><span id="toast-msg"></span></div>
+
+<script>
+const API = 'http://localhost:8000';
+
+// ── STATE ─────────────────────────────────────────────────────────
+let state = { videoId:null, filename:null, segments:[], videoBlobUrl:null };
+let selectedFile = null;
+
+// ── UNDO STACK ────────────────────────────────────────────────────
+const undoStack = [];
+const MAX_UNDO  = 30;
+let inEditSession = false, editSessionTimer = null;
+
+function pushUndo() {
+  undoStack.push(JSON.parse(JSON.stringify(state.segments)));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  updateUndoBtn();
+}
+function undoChange() {
+  if (!undoStack.length) return;
+  state.segments = undoStack.pop();
+  inEditSession = false;
+  renderSRTList(); syncPlainText(); persistSRT(); updateUndoBtn();
+  toast('info','שינוי בוטל');
+}
+function updateUndoBtn() {
+  const btn = document.getElementById('undo-btn');
+  btn.style.display = undoStack.length ? 'inline-flex' : 'none';
+  if (undoStack.length)
+    btn.textContent = `↩ בטל שינוי${undoStack.length>1?' ('+undoStack.length+')':''}`;
+}
+function getPlainText() { return state.segments.map(s=>s.text).join('\n'); }
+
+// ── THEME ─────────────────────────────────────────────────────────
+let isLight = false;
+function toggleTheme() {
+  isLight = !isLight;
+  document.documentElement.classList.toggle('light', isLight);
+  document.getElementById('theme-btn').innerHTML = isLight ? '🌙 חושך על פני תהום' : '☀️ יהי אור';
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+if (localStorage.getItem('theme') === 'light') toggleTheme();
+// AI powered by Gemini (key stored server-side)
+
+// ── TRANSCRIPT HINT ───────────────────────────────────────────────
+function selectMode(mode) {
+  document.getElementById('mode-file-only').classList.toggle('active', mode === 'file-only');
+  document.getElementById('mode-with-text').classList.toggle('active', mode === 'with-text');
+  const area = document.getElementById('transcript-area');
+  area.style.display = mode === 'with-text' ? 'block' : 'none';
+  if (mode === 'with-text') {
+    document.getElementById('transcript-hint').focus();
+  }
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e=>{e.preventDefault();dropZone.classList.add('dragover')});
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFileSelected(e.dataTransfer.files[0]);
+});
+document.getElementById('file-input').addEventListener('change', e=>{
+  if (e.target.files.length) handleFileSelected(e.target.files[0]);
+});
+
+// File selection — show estimate box with start button
+const MAX_FILE_MB = 500;
+
+function handleFileSelected(file) {
+  const sizeMB = file.size/1024/1024;
+  if (sizeMB > MAX_FILE_MB) {
+    toast('error', `הקובץ גדול מדי (${sizeMB.toFixed(0)}MB). מקסימום ${MAX_FILE_MB}MB.`);
+    document.getElementById('file-input').value = '';
+    return;
+  }
+  selectedFile = file;
+  const safeMins = Math.max(1, Math.round(sizeMB/50));
+
+  // Store blob URL for video player
+  if (state.videoBlobUrl) URL.revokeObjectURL(state.videoBlobUrl);
+  state.videoBlobUrl = URL.createObjectURL(file);
+
+  // Hide drop zone, show file info
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('file-selected-state').style.display = 'block';
+  document.getElementById('selected-filename').textContent = file.name;
+  document.getElementById('selected-filesize').textContent = sizeMB.toFixed(1) + ' MB';
+
+  // Show estimate
+  document.getElementById('est-size').textContent = sizeMB.toFixed(1)+' MB';
+  document.getElementById('est-time').textContent = '—';
+  document.getElementById('est-duration').textContent = '—';
+  document.getElementById('estimate-box').style.display = 'block';
+  document.getElementById('start-section').style.display = 'block';
+  document.getElementById('timer-section').style.display = 'none';
+  document.getElementById('timer-display').textContent = '0%';
+
+  // Read video/audio duration
+  const tempMedia = document.createElement(file.type.startsWith('audio') ? 'audio' : 'video');
+  const blobUrl = URL.createObjectURL(file);
+  tempMedia.src = blobUrl;
+  tempMedia.addEventListener('loadedmetadata', () => {
+    const dur = tempMedia.duration;
+    URL.revokeObjectURL(blobUrl);
+    if (!isFinite(dur)) return;
+    const durMins = Math.floor(dur/60);
+    const durSecs = Math.floor(dur%60);
+    document.getElementById('est-duration').textContent =
+      durMins > 0 ? `${durMins}:${String(durSecs).padStart(2,'0')} דקות` : `${durSecs} שניות`;
+    // Estimate: ~0.5x realtime on CPU with medium model
+    const estSecs = dur * 1.5; // ~1.5x realtime on CPU with medium model
+    const estMins = Math.max(1, Math.round(estSecs/60));
+    document.getElementById('est-time').textContent =
+      estMins <= 1 ? '1–2 דקות' : `${estMins}–${estMins+1} דקות`;
+  }, { once: true });
+}
+
+function resetSettings() {
+  // Reset max words
+  const mw = document.getElementById('max-words');
+  if (mw) mw.value = '4';
+  // Reset burn/style to defaults
+  const defaults = {
+    'burn-font':'Arial','burn-position':'bottom','burn-color':'white',
+    'burn-outline':'none','burn-fontsize':'24','burn-style':'normal','burn-bg-opacity':'0'
+  };
+  Object.entries(defaults).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+  const fsv = document.getElementById('font-size-val');
+  if (fsv) fsv.textContent = '24';
+  const bgv = document.getElementById('bg-opacity-val');
+  if (bgv) bgv.textContent = '0';
+  updateBurnPreview();
+  applyBurnStylesToOverlay();
+}
+
+function confirmClearFile() {
+  if (state.segments.length > 0) {
+    document.getElementById('confirm-modal').classList.add('show');
+  } else {
+    clearFileSelection();
+    resetSettings();
+  }
+}
+
+function clearFileSelection() {
+  // Abort ongoing upload if any
+  if (uploadAbortController) {
+    uploadAbortController.abort();
+    uploadAbortController = null;
+    stopTimer();
+    showProgress(false);
+    setStep(1);
+  }
+  selectedFile = null;
+  document.getElementById('drop-zone').style.display = 'block';
+  document.getElementById('file-selected-state').style.display = 'none';
+  document.getElementById('estimate-box').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  document.getElementById('start-section').style.display = 'block';
+  document.getElementById('timer-section').style.display = 'none';
+  const clearBtn = document.querySelector('[onclick="clearFileSelection()"]');
+  if (clearBtn) clearBtn.disabled = false;
+  resetSettings();
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────
+let timerInterval = null;
+function startTimer() {
+  const t0 = Date.now();
+  timerInterval = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    const bar = document.getElementById('progress-bar');
+    const el  = document.getElementById('timer-display');
+    if (bar && el) el.textContent = Math.round(parseFloat(bar.style.width)||0) + '%';
+  }, 200);
+}
+function stopTimer() {
+  clearInterval(timerInterval); timerInterval = null;
+  const el = document.getElementById('timer-display');
+  if (el) el.textContent = '100%';
+}
+
+// ── START TRANSCRIPTION (called by button) ────────────────────────
+function startTranscription() {
+  if (!selectedFile) return;
+  // Hide start button, show timer
+  document.getElementById('start-section').style.display = 'none';
+  document.getElementById('timer-section').style.display = 'block';
+  document.getElementById('timer-display').textContent = '0%';
+  uploadFile(selectedFile);
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────
+let uploadAbortController = null;
+
+async function uploadFile(file) {
+  uploadAbortController = new AbortController();
+  const clearBtn = document.querySelector('[onclick="clearFileSelection()"]');
+  if (clearBtn) clearBtn.disabled = true;
+  setStep(2); showProgress(true,'מעלה קובץ...'); animateProgress(0,12,1200); startTimer();
+  const form = new FormData();
+  form.append('file', file);
+  const hint = document.getElementById('transcript-hint').value.trim();
+  if (hint) form.append('initial_prompt', hint);
+  const maxWordsRaw = document.getElementById('max-words').value.trim();
+  const maxWords = maxWordsRaw !== '' ? parseInt(maxWordsRaw) : 0;
+  if (maxWords > 0) {
+    form.append('max_words_per_line', String(maxWords));
+  }
+
+  try {
+    showProgress(true,'מתמלל...'); animateProgressSlow(15,70);
+    const res = await fetch(`${API}/transcribe`,{method:'POST',body:form});
+    if (!res.ok){const e=await res.json().catch(()=>({detail:res.statusText}));throw new Error(e.detail);}
+    const data = await res.json();
+    animateProgress(85,100,400); await sleep(400);
+    stopTimer();
+    uploadAbortController = null;
+    const clearBtnOk = document.querySelector('[onclick="clearFileSelection()"]');
+    if (clearBtnOk) clearBtnOk.disabled = false;
+    state.videoId  = data.video_id;
+    state.filename = data.filename;
+    state.segments = data.segments;
+    showProgress(false);
+    document.getElementById('estimate-box').style.display='none';
+    showResults();
+    setStep(3);
+
+    if (hint) {
+      toast('info', 'תמלול הושלם — מעדכן לפי הטקסט שסיפקת...');
+      await runAlignWithTranscript(hint);
+    } else {
+      // Auto AI fix
+      await autoAiFix();
+    }
+  } catch(err){
+    stopTimer(); showProgress(false); setStep(1);
+    document.getElementById('start-section').style.display = 'block';
+  document.getElementById('timer-section').style.display = 'none';
+
+    toast('error',`שגיאה: ${err.message}`);
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function showResults() {
+  document.getElementById('results-section').style.display='block';
+  renderSRTList(); syncPlainText();
+  document.getElementById('srt-count').textContent=`${state.segments.length} כתוביות`;
+  // Load video player
+  if (state.videoBlobUrl) {
+    const player = document.getElementById('video-player');
+    player.src = state.videoBlobUrl;
+    document.getElementById('video-no-file').style.display = 'none';
+    document.getElementById('video-wrap').style.display = 'flex';
+    document.getElementById('download-row').style.display = 'block';
+    setTimeout(applyBurnStylesToOverlay, 100);
+  }
+
+}
+
+function formatTimeDisplay(ts) {
+  // Convert 00:01:01,818 → 00:01:01.8
+  return ts.replace(',', '.').replace(/.([0-9])[0-9]*$/, '.$1');
+}
+
+function parseTimeInput(val) {
+  // Accept 00:01:01.8 → convert back to 00:01:01,800 for storage
+  if (!val.includes(',')) {
+    // Convert dot format to comma format
+    val = val.replace(/\.(\d)$/, '.$10').replace(/\.(\d{2})$/, '.$10');
+    const parts = val.split('.');
+    const ms = (parts[1] || '000').padEnd(3,'0').slice(0,3);
+    val = parts[0] + ',' + ms;
+  }
+  return val;
+}
+
+function renderSRTList() {
+  document.getElementById('srt-list').innerHTML = state.segments.map((seg,i)=>`
+    <div class="srt-item" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
+      <div class="srt-num">${seg.index}</div>
+      <div>
+        <div class="srt-time">
+          <input class="time-input" value="${formatTimeDisplay(seg.start)}" data-idx="${i}" data-field="start" oninput="onSegChange(this)" onblur="normalizeTimeInput(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
+          <span style="color:var(--muted);margin:0 4px;font-size:16px;font-weight:700">←</span>
+          <input class="time-input" value="${formatTimeDisplay(seg.end)}" data-idx="${i}" data-field="end" oninput="onSegChange(this)" onblur="normalizeTimeInput(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
+        </div>
+        <textarea class="text-input" rows="2" data-idx="${i}" data-field="text" oninput="onSegChange(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){this.blur();event.preventDefault()}">${seg.text}</textarea>
+      </div>
+    </div>`).join('');
+}
+
+// Plain text: one line per subtitle
+function syncPlainText() {
+  document.getElementById('plain-text-area').value = getPlainText();
+}
+
+// ── CHANGE HANDLERS ───────────────────────────────────────────────
+let autoSaveTimer=null, plainSyncTimer=null;
+
+function normalizeTimeInput(el) {
+  if (el.dataset.field === 'start' || el.dataset.field === 'end') {
+    const idx   = +el.dataset.idx;
+    const field = el.dataset.field;
+    const normalized = parseTimeInput(el.value);
+    const sec = srtToSec(normalized);
+    const seg = state.segments[idx];
+
+    if (field === 'end') {
+      // End must be > start
+      const startSec = srtToSec(seg.start);
+      if (sec <= startSec) {
+        // Reject — revert to previous value
+        el.value = formatTimeDisplay(seg.end);
+        toast('error', 'זמן סיום חייב להיות אחרי זמן התחלה');
+        return;
+      }
+    } else if (field === 'start') {
+      // Start must be < end (after cascade adjustments)
+      const endSec = srtToSec(seg.end);
+      // Allow start > end — applyTimeCascade will fix end
+    }
+
+    state.segments[idx][field] = normalized;
+    el.value = formatTimeDisplay(normalized);
+    applyTimeCascade(idx, field, normalized);
+    scheduleAutoSave();
+  }
+}
+
+function applyTimeCascade(idx, field, newVal) {
+  const segs = state.segments;
+  if (field === 'end') {
+    const newEndSec = srtToSec(newVal);
+    // Only cascade forward if moving end LATER
+    // Walk through ALL following subtitles and fix any collision
+    let prevEnd = newEndSec;
+    for (let i = idx + 1; i < segs.length; i++) {
+      const startSec = srtToSec(segs[i].start);
+      const dur      = srtToSec(segs[i].end) - startSec;
+      if (startSec < prevEnd - 0.001) {
+        // Collision — push forward
+        segs[i].start = secToSrt(prevEnd);
+        segs[i].end   = secToSrt(prevEnd + dur);
+        prevEnd = prevEnd + dur;
+      } else {
+        break; // No more collisions in chain
+      }
+    }
+    renderSRTList();
+  } else if (field === 'start') {
+    const newStartSec = srtToSec(newVal);
+    // If start moves before previous subtitle's end → shorten previous subtitle's end
+    if (idx > 0) {
+      const prevEndSec = srtToSec(segs[idx-1].end);
+      if (newStartSec < prevEndSec) {
+        segs[idx-1].end = secToSrt(newStartSec);
+      }
+    }
+    // If start moves past end → push end forward, keep duration
+    const origStart = srtToSec(segs[idx].start);
+    const origEnd   = srtToSec(segs[idx].end);
+    const dur       = Math.max(origEnd - origStart, 1);
+    if (newStartSec >= origEnd) {
+      const newEnd = newStartSec + dur;
+      segs[idx].end = secToSrt(newEnd);
+      // Now cascade from this subtitle's new end
+      let prevEnd = newEnd;
+      for (let i = idx + 1; i < segs.length; i++) {
+        const s = srtToSec(segs[i].start);
+        const d = srtToSec(segs[i].end) - s;
+        if (s < prevEnd - 0.001) {
+          segs[i].start = secToSrt(prevEnd);
+          segs[i].end   = secToSrt(prevEnd + d);
+          prevEnd = prevEnd + d;
+        } else break;
+      }
+    }
+    // If start didn't pass end — nothing to cascade, END unchanged
+    renderSRTList();
+  }
+}
+
+function onSegChange(el) {
+  if (!inEditSession) { pushUndo(); inEditSession=true; }
+  clearTimeout(editSessionTimer);
+  editSessionTimer = setTimeout(()=>{ inEditSession=false; }, 2000);
+  const field = el.dataset.field;
+  const idx   = +el.dataset.idx;
+  if (field === 'text') {
+    state.segments[idx][field] = el.value;
+    syncPlainText();
+    scheduleAutoSave();
+  }
+  // Time fields: only save on blur via normalizeTimeInput, NOT here
+}
+
+function onPlainTextChange() {
+  clearTimeout(plainSyncTimer);
+  plainSyncTimer = setTimeout(()=>{
+    if (!inEditSession) { pushUndo(); inEditSession=true; }
+    clearTimeout(editSessionTimer);
+    editSessionTimer = setTimeout(()=>{ inEditSession=false; }, 2000);
+    distributePlainText(document.getElementById('plain-text-area').value);
+    renderSRTList();
+    scheduleAutoSave();
+  }, 600);
+}
+
+function distributePlainText(raw) {
+  // Split by newlines first — each line = one subtitle
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+
+  if (lines.length === state.segments.length) {
+    // Perfect 1:1 mapping
+    lines.forEach((line,i)=>{ state.segments[i].text = line; });
+  } else if (lines.length > 1) {
+    // More lines than segments — merge or redistribute by time
+    const totalDur = state.segments.reduce((s,seg)=>s+segDur(seg),0)||1;
+    // Distribute line-groups proportionally
+    const allText = lines.join(' ');
+    const words = allText.split(/\s+/).filter(Boolean);
+    let wi=0;
+    state.segments.forEach((seg,i)=>{
+      const count = i===state.segments.length-1
+        ? words.length-wi
+        : Math.round((segDur(seg)/totalDur)*words.length);
+      seg.text = words.slice(wi,wi+count).join(' ');
+      wi+=count;
+    });
+  } else {
+    // Single paragraph — distribute by time
+    const words = raw.split(/\s+/).filter(Boolean);
+    const totalDur = state.segments.reduce((s,seg)=>s+segDur(seg),0)||1;
+    let wi=0;
+    state.segments.forEach((seg,i)=>{
+      const count = i===state.segments.length-1
+        ? words.length-wi
+        : Math.round((segDur(seg)/totalDur)*words.length);
+      seg.text = words.slice(wi,wi+count).join(' ');
+      wi+=count;
+    });
+  }
+}
+
+function scheduleAutoSave(){
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(async()=>{ await persistSRT(); showAutosaved(); }, 1500);
+  scheduleVttSync(); // keep subtitles in sync with edits
+}
+function showAutosaved(){
+  const el=document.getElementById('autosave-indicator');
+  el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ── PERSIST ───────────────────────────────────────────────────────
+async function persistSRT(){
+  if (!state.videoId) return;
+  await fetch(`${API}/save-srt`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({video_id:state.videoId,segments:state.segments})}).catch(()=>{});
+}
+
+// ── DOWNLOAD SRT ──────────────────────────────────────────────────
+async function downloadSRT(){
+  if (!state.videoId) return;
+  const baseName=(state.filename||'subtitles').replace(/\.[^.]+$/,'');
+  const srtContent=state.segments.map(s=>`${s.index}\n${s.start} --> ${s.end}\n${s.text}\n`).join('\n');
+  if (window.showSaveFilePicker){
+    try{
+      const h=await window.showSaveFilePicker({suggestedName:`${baseName}.srt`,types:[{description:'SRT',accept:{'text/plain':['.srt']}}]});
+      const w=await h.createWritable(); await w.write(srtContent); await w.close();
+      setStepDone(3); toast('success',`${baseName}.srt נשמר`); return;
+    }catch(e){ if(e.name==='AbortError') return; }
+  }
+  const blob=new Blob([srtContent],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`${baseName}.srt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  setStepDone(3); toast('success',`${baseName}.srt הורד`);
+}
+
+// ── COPY ──────────────────────────────────────────────────────────
+function copyText(){
+  navigator.clipboard.writeText(getPlainText())
+    .then(()=>toast('success','הטקסט הועתק ללוח'))
+    .catch(()=>toast('error','שגיאה בהעתקה'));
+}
+
+// ── SEND TO CLAUDE (copy prompt) ─────────────────────────────────
+// ── AI PROGRESS ──────────────────────────────────────────────────
+let aiTimerInterval = null;
+
+function startAIProgress(label) {
+  // Show progress bar
+  document.getElementById('ai-progress').style.display = 'block';
+  document.getElementById('ai-progress-label').textContent = label;
+  document.getElementById('ai-progress-bar').style.width = '5%';
+  document.getElementById('ai-timer-display').textContent = '60s';
+  // Lock editor with overlay
+  const overlay = document.getElementById('srt-loading-overlay');
+  document.getElementById('srt-loading-label').textContent = label;
+  overlay.classList.add('show');
+  // Disable AI buttons
+  ['ai-btn','paste-btn'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.disabled=true;
+  });
+  let displayed = 0;
+  let countdown = 60;
+  const tau = 20;
+  const s0 = Date.now();
+  aiTimerInterval = setInterval(() => {
+    const elapsed = (Date.now()-s0)/1000;
+    const target = Math.min(90, Math.round(90*(1-Math.exp(-elapsed/tau))));
+    if (displayed < target) displayed++;
+    document.getElementById('ai-progress-bar').style.width = displayed + '%';
+    // Countdown from 60
+    countdown = Math.max(0, 60 - Math.floor(elapsed));
+    document.getElementById('ai-timer-display').textContent = countdown > 0 ? countdown + 's' : '...';
+  }, 500);
+}
+
+function stopAIProgress() {
+  clearInterval(aiTimerInterval);
+  aiTimerInterval = null;
+  const bar = document.getElementById('ai-progress-bar');
+  bar.style.width = '100%';
+  // Unlock editor
+  document.getElementById('srt-loading-overlay').classList.remove('show');
+  // Re-enable AI buttons
+  ['ai-btn','paste-btn'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.disabled=false;
+  });
+  setTimeout(() => {
+    document.getElementById('ai-progress').style.display = 'none';
+    bar.style.width = '5%';
+  }, 600);
+}
+
+async function autoAiFix() {
+  // Runs automatically after transcription — silent, shows status
+
+  startAIProgress('משפר דיוק כתוביות...');
+  try {
+    const res = await fetch(`${API}/ai-fix`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ segments: state.segments }),
+    });
+    if (!res.ok) throw new Error('AI fix failed silently');
+    const data = await res.json();
+    // No pushUndo for auto AI fix — not a user action
+    state.segments = data.segments;
+    renderSRTList(); syncPlainText(); await persistSRT();
+
+    toast('success', `תמלול הושלם ותוקן — ${state.segments.length} כתוביות`);
+  } catch(err) {
+    // Silent fail — just show transcription success
+
+    toast('success', `תמלול הושלם — ${state.segments.length} כתוביות`);
+  } finally {
+    stopAIProgress();
+  }
+}
+
+async function aiFixText(){
+  const btn = document.getElementById('ai-btn');
+  btn.disabled = true; btn.textContent = '⏳ מתקן...';
+  startAIProgress('AI סורק ומתקן שגיאות...');
+  try {
+    const res = await fetch(`${API}/ai-fix`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ segments: state.segments }),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'שגיאה'); }
+    const data = await res.json();
+    pushUndo();
+    state.segments = data.segments;
+    renderSRTList(); syncPlainText(); await persistSRT(); loadSubtitleTrack();
+    toast('success', 'AI תיקן את הכתוביות ✨');
+  } catch(err) {
+    toast('error', `שגיאה: ${err.message}`);
+  } finally {
+    stopAIProgress();
+    btn.disabled = false; btn.textContent = '✨ מעבר ותיקון AI';
+  }
+}
+
+function copyForClaude(){
+  const lines = state.segments.map(s=>`${s.index}. ${s.text}`).join('\n');
+  const maxW  = parseInt(document.getElementById('max-words').value)||0;
+  const maxWLine = maxW>0 ? `\nחשוב: כל כתובית יכולה להכיל לכל היותר ${maxW} מילים. אם שורה ארוכה יותר — חלק אותה לשורות נפרדות בשיקול דעת לפי ההקשר, ועדכן את המספור בהתאם.` : '';
+  const prompt = `להלן כתוביות בעברית שנוצרו אוטומטית ועלולות להכיל שגיאות תמלול.
+תשמור על הטקסט בדיוק כמו שהוא, רק תתקן מילים שברור שאינן נכונות למילים הנכונות.
+אם אתה לא בטוח — אל תיגע. החזר בדיוק אותן שורות עם אותם מספרים בפורמט: מספר. טקסט${maxWLine}
+
+${lines}`;
+  navigator.clipboard.writeText(prompt).then(()=>{
+    toast('success','הבקשה הועתקה! הדבק ב-Claude.ai וקבל תיקון');
+    document.getElementById('paste-btn').style.display='inline-flex';
+  }).catch(()=>toast('error','שגיאה בהעתקה'));
+}
+
+// ── PASTE FROM CLAUDE ─────────────────────────────────────────────
+function pasteFromClaude(){
+  document.getElementById('paste-area').value='';
+  document.getElementById('paste-modal').classList.add('show');
+}
+function applyPastedCorrection(){
+  const raw=document.getElementById('paste-area').value.trim();
+  if (!raw) return;
+  pushUndo();
+  const newSegs = [];
+  for (const line of raw.split('\n')){
+    const m = line.trim().match(/^(\d+)\.\s*(.+)/);
+    if (m) newSegs.push({ index:parseInt(m[1]), text:m[2].trim() });
+  }
+  if (newSegs.length > 0){
+    // If count matches — update text only
+    if (newSegs.length === state.segments.length){
+      newSegs.forEach((ns,i)=>{ state.segments[i].text=ns.text; });
+    } else {
+      // More segments (e.g. after splitting long lines) — rebuild with interpolated timestamps
+      const totalDur = state.segments.reduce((s,seg)=>s+segDur(seg),0)||1;
+      const totalWords = newSegs.reduce((s,ns)=>s+ns.text.split(' ').length,0)||1;
+      let t=srtToSec(state.segments[0]?.start||'00:00:00,000');
+      const end=srtToSec(state.segments[state.segments.length-1]?.end||'00:00:01,000');
+      state.segments = newSegs.map((ns,i)=>{
+        const wFrac=ns.text.split(' ').length/totalWords;
+        const dur=(end-t)*(i===newSegs.length-1?1:wFrac/(1-(i*wFrac/newSegs.length)));
+        const segEnd=i===newSegs.length-1?end:t+totalDur*wFrac;
+        const seg={ index:i+1, start:secToSrt(t), end:secToSrt(Math.min(segEnd,end)), text:ns.text };
+        t=segEnd;
+        return seg;
+      });
+    }
+  }
+  renderSRTList(); syncPlainText(); persistSRT();
+  closeModal('paste-modal');
+  toast('success','התיקון הוחל ✨');
+}
+
+// ── ALIGN WITH TRANSCRIPT (called automatically after transcription) ──
+async function runAlignWithTranscript(transcript) {
+  if (!transcript) transcript = document.getElementById('transcript-hint').value.trim();
+  if (!transcript) { toast('error', 'לא נמצא טקסט'); return; }
+  startAIProgress('מעדכן כתוביות לפי הטקסט שסיפקת...');
+  try {
+    const res = await fetch(`${API}/align-with-transcript`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ segments: state.segments, transcript }),
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'שגיאה'); }
+    const data = await res.json();
+    pushUndo();
+    state.segments = data.segments;
+    renderSRTList(); syncPlainText(); await persistSRT(); loadSubtitleTrack();
+    toast('success', 'הכתוביות עודכנו לפי הטקסט שסיפקת ✨');
+  } catch(err) {
+    toast('error', err.message);
+  } finally {
+    stopAIProgress();
+  }
+}
+
+// ── ALIGN FROM PLAIN TEXT (uses Gemini align endpoint) ─────────────
+async function alignFromPlainText() {
+  const transcript = document.getElementById('transcript-hint').value.trim();
+  if (!transcript) {
+    toast('error', 'לא הוזן טקסט מקורי — פתח את תיבת הטקסט למעלה והדבק');
+    return;
+  }
+  const btn = document.getElementById('align-plain-btn');
+  btn.disabled = true;
+  await runAlignWithTranscript(transcript);
+  btn.disabled = false;
+}
+
+// ── VIDEO SUBTITLE SYNC ──────────────────────────────────────────
+// ── VIDEO SUBTITLE OVERLAY ───────────────────────────────────────
+let _lastActiveIdx = -1;
+
+function setActiveSubtitle(idx) {
+  if (idx === _lastActiveIdx) return;
+  _lastActiveIdx = idx;
+  document.querySelectorAll('.srt-item').forEach((el, i) => {
+    el.classList.toggle('active-sub', i === idx);
+  });
+  if (idx >= 0 && document.activeElement?.closest('.srt-item') === null) {
+    const el = document.querySelectorAll('.srt-item')[idx];
+    if (el) el.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  }
+}
+function syncOverlaySubtitle() {
+  const video   = document.getElementById('video-player');
+  const overlay = document.getElementById('video-sub-overlay');
+  if (!video || !overlay || !state.segments.length) return;
+  const t = video.currentTime;
+  const t2 = Math.round(t * 10) / 10; // round to 0.1s for better matching
+  const segIdx = state.segments.findIndex(s => t2 >= srtToSec(s.start) && t2 <= srtToSec(s.end) + 0.05);
+  overlay.textContent = segIdx >= 0 ? state.segments[segIdx].text : '';
+
+  // Highlight active subtitle
+  if (segIdx !== _lastActiveIdx) {
+    setActiveSubtitle(segIdx);
+  }
+}
+
+function srtToSec2(ts) {
+  try {
+    const [h,m,r] = ts.split(':');
+    const [s,ms]  = r.replace(',','.').split('.');
+    return +h*3600 + +m*60 + +s + (+ms||0)/1000;
+  } catch { return 0; }
+}
+
+// loadSubtitleTrack / scheduleVttSync — no-op (using overlay instead)
+function loadSubtitleTrack() { /* overlay-based, no track needed */ }
+let vttSyncTimer = null;
+function scheduleVttSync() { /* no-op */ }
+
+// Track which srt-item index is currently "active" (was previously clicked)
+let activeSrtIdx = null;
+
+
+
+function seekToSubtitleIfNotFocused(e, idx) {
+  if (activeSrtIdx === idx) return;
+  activeSrtIdx = idx;
+  const seg    = state.segments[idx];
+  const player = document.getElementById('video-player');
+  if (!seg || !player || !player.src) return;
+  const wasEnded = player.ended;
+  const startSec = srtToSec(seg.start);
+  const endSec = srtToSec(seg.end);
+  player.currentTime = startSec + (endSec - startSec) / 2;
+  if (wasEnded) player.play().catch(()=>{});
+  // Highlight immediately — timeupdate will confirm same subtitle
+  setActiveSubtitle(idx);
+  document.getElementById('video-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// Reset activeSrtIdx when clicking outside srt-list
+document.addEventListener('click', e => {
+  if (!e.target.closest('.srt-item')) activeSrtIdx = null;
+});
+
+
+
+
+let _applyStylesTimer = null;
+function scheduleApplyStyles() {
+  clearTimeout(_applyStylesTimer);
+  _applyStylesTimer = setTimeout(applyBurnStylesToOverlay, 150);
+}
+
+function applyBurnStylesToOverlay() {
+  const overlay = document.getElementById('video-sub-overlay');
+  if (!overlay) return;
+
+  const font    = document.getElementById('burn-font')?.value || 'Arial';
+  const color   = document.getElementById('burn-color')?.value || 'white';
+  const outline = document.getElementById('burn-outline')?.value || 'none';
+  const size    = parseInt(document.getElementById('burn-fontsize')?.value || 24);
+  const style   = document.getElementById('burn-style')?.value || 'normal';
+  const pos     = document.getElementById('burn-position')?.value || 'bottom';
+  const bgOp    = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+
+  const colorMap = {white:'#fff',yellow:'#ff0',black:'#000',cyan:'#0ff',lime:'#0f8',red:'#f44',orange:'#f90',pink:'#f8c'};
+  const txtColor = colorMap[color] || '#fff';
+
+  let shadow = '';
+  if (outline === 'black')            shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
+  else if (outline === 'white')       shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
+  else if (outline === 'dark-shadow') shadow = '3px 4px 8px rgba(0,0,0,.9)';
+
+  overlay.style.fontFamily  = font + ',sans-serif';
+  overlay.style.color       = txtColor;
+  overlay.style.textShadow  = shadow;
+  overlay.style.fontSize    = size + 'px';
+  overlay.style.fontWeight  = style.includes('bold') ? '700' : '400';
+  overlay.style.fontStyle   = style.includes('italic') ? 'italic' : 'normal';
+  overlay.style.background  = bgOp > 0 ? `rgba(0,0,0,${bgOp/100})` : 'transparent';
+  overlay.style.borderRadius= bgOp > 0 ? '4px' : '0';
+  overlay.style.padding     = bgOp > 0 ? '4px 12px' : '0';
+
+  // Position
+  overlay.style.top = overlay.style.bottom = overlay.style.transform = '';
+  const posMap = {
+    'very-bottom':{bottom:'4px'},'bottom':{bottom:'18px'},'center-bottom':{bottom:'28%'},
+    'center':{top:'50%',transform:'translate(-50%,-50%)'},
+    'center-top':{top:'28%'},'top':{top:'18px'},'very-top':{top:'4px'},
+  };
+  overlay.style.left = '50%';
+  const pm = posMap[pos] || posMap['bottom'];
+  if (!pm.transform) overlay.style.transform = 'translateX(-50%)';
+  Object.entries(pm).forEach(([k,v]) => overlay.style[k] = v);
+}
+
+function resetBurnDefaults() {
+  document.getElementById('burn-font').value       = 'Arial';
+  document.getElementById('burn-position').value   = 'bottom';
+  document.getElementById('burn-color').value      = 'white';
+  document.getElementById('burn-outline').value    = 'none';
+  document.getElementById('burn-fontsize').value   = '24';
+  document.getElementById('font-size-val').textContent = '24';
+  document.getElementById('burn-style').value      = 'normal';
+  document.getElementById('burn-bg-opacity').value = '0';
+  document.getElementById('bg-opacity-val').textContent = '0';
+  updateBurnPreview();
+  applyBurnStylesToOverlay();
+}
+
+function openBurnSettings() {
+  document.getElementById('burn-settings-modal').classList.add('show');
+}
+
+// ── BURN PREVIEW ─────────────────────────────────────────────────
+function updateBurnPreview() {
+  const el    = document.getElementById('burn-preview-text');
+  const box   = document.getElementById('burn-preview');
+  if (!el) return;
+
+  const font    = document.getElementById('burn-font').value;
+  const color   = document.getElementById('burn-color').value;
+  const outline = document.getElementById('burn-outline').value;
+  const size    = document.getElementById('burn-fontsize').value;
+  const style   = document.getElementById('burn-style')?.value || 'normal';
+  const pos     = document.getElementById('burn-position').value;
+  const bgOp    = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+
+  // Color map
+  const colorMap = {
+    white:'#ffffff', yellow:'#ffff00', black:'#000000',
+    cyan:'#00ffff', lime:'#00ff88', red:'#ff4444',
+    orange:'#ff9900', pink:'#ff88cc'
+  };
+  const txtColor = colorMap[color] || '#ffffff';
+
+  // Text shadow / outline
+  let shadow = '';
+  if (outline === 'black')       shadow = '2px 2px 3px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000';
+  else if (outline === 'white')  shadow = '2px 2px 3px #fff, -1px -1px 2px #fff';
+  else if (outline === 'dark-shadow') shadow = '3px 4px 8px rgba(0,0,0,.9)';
+
+  // Font style
+  const isBold   = style.includes('bold');
+  const isItalic = style.includes('italic');
+
+  el.style.fontFamily  = font + ',sans-serif';
+  el.style.color       = txtColor;
+  el.style.textShadow  = shadow;
+  el.style.fontSize    = size + 'px';
+  el.style.fontWeight  = isBold ? '700' : '400';
+  el.style.fontStyle   = isItalic ? 'italic' : 'normal';
+
+  // Background
+  el.style.background  = bgOp > 0 ? `rgba(0,0,0,${bgOp/100})` : 'transparent';
+  el.style.borderRadius = bgOp > 0 ? '4px' : '0';
+  el.style.padding      = bgOp > 0 ? '4px 12px' : '6px 16px';
+
+  // Position (5 levels)
+  el.style.left = el.style.right = '';
+  el.style.width = '100%'; el.style.textAlign = 'center';
+  el.style.transform = '';
+  const posMap2 = {
+    'very-bottom': {bottom:'2px', top:'auto'},
+    'bottom':      {bottom:'10px', top:'auto'},
+    'center-bottom':{bottom:'30%', top:'auto'},
+    'center':      {top:'50%', bottom:'auto', transform:'translateY(-50%)'},
+    'center-top':  {top:'30%', bottom:'auto'},
+    'top':         {top:'10px', bottom:'auto'},
+    'very-top':    {top:'2px', bottom:'auto'},
+  };
+  const pm = posMap2[pos] || posMap2['bottom'];
+  el.style.bottom    = pm.bottom || 'auto';
+  el.style.top       = pm.top    || 'auto';
+  if (pm.transform)  el.style.transform = pm.transform;
+}
+
+// ── BURN ──────────────────────────────────────────────────────────
+async function burnSubtitles(){
+  if (!state.videoId) return;
+  document.getElementById('burn-btn').disabled=true;
+  document.getElementById('burn-progress').style.display='block';
+  animateBurnProgress();
+  const posRaw = document.getElementById('burn-position').value;
+  const posMap = {
+    'very-bottom':'very-bottom','bottom':'bottom','center-bottom':'center-bottom',
+    'center':'center','center-top':'center-top','top':'top','very-top':'very-top'
+  };
+  const styleVal = document.getElementById('burn-style')?.value || 'normal';
+  const bgOp = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+  const payload={
+    video_id:state.videoId, srt_lines:state.segments,
+    font_name:document.getElementById('burn-font').value,
+    font_size:parseInt(document.getElementById('burn-fontsize').value),
+    font_color:document.getElementById('burn-color').value,
+    outline_color:document.getElementById('burn-outline').value,
+    position:posMap[posRaw]||'bottom',
+    font_style:styleVal,
+    bg_opacity:bgOp,
+  };
+  try{
+    const res=await fetch(`${API}/burn`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if (!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e?.detail||'שגיאה');}
+    const blob=await res.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`עם_כתוביות_${state.filename||'video.mp4'}`;
+    a.click(); URL.revokeObjectURL(url);
+    toast('success','הוידאו עם כתוביות הורד!');
+  }catch(err){ toast('error',`שגיאה: ${err.message}`); }
+  finally{ document.getElementById('burn-btn').disabled=false; document.getElementById('burn-progress').style.display='none'; }
+}
+
+// ── TABS ──────────────────────────────────────────────────────────
+function switchTab(name){
+  const n=['editor','text','burn'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',n[i]===name));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if(name==='text') syncPlainText();
+  if(name==='editor') applyBurnStylesToOverlay();
+}
+
+// ── STEPS ─────────────────────────────────────────────────────────
+function setStep(n){
+  for(let i=1;i<=3;i++){
+    const el=document.getElementById(`step-${i}`);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done'); else if(i===n) el.classList.add('active');
+  }
+}
+function setStepDone(n){ const el=document.getElementById(`step-${n}`); el.classList.remove('active'); el.classList.add('done'); }
+
+// ── PROGRESS ──────────────────────────────────────────────────────
+function showProgress(show,label=''){
+  document.getElementById('progress-section').style.display=show?'block':'none';
+  if(label) document.getElementById('progress-label').textContent=label;
+  if(!show) document.getElementById('progress-bar').style.width='0%';
+}
+function animateProgress(from,to,dur){
+  const bar=document.getElementById('progress-bar'),s=performance.now();
+  (function f(now){ const t=Math.min((now-s)/dur,1); bar.style.width=(from+(to-from)*(t<.5?2*t*t:-1+(4-2*t)*t))+'%'; if(t<1)requestAnimationFrame(f); })(performance.now());
+}
+// Asymptotic crawl — moves fast at first, then slows to a near-stop (never reaches cap)
+function animateProgressSlow(start, cap) {
+  const bar = document.getElementById('progress-bar');
+  const t0  = Date.now();
+  // Formula: pct = cap * (1 - e^(-elapsed/tau))
+  // tau=25s → at 10s it's at ~33%, at 30s ~70%, at 60s ~91% of cap
+  const tau = 55;
+  bar.style.width = start + '%';
+  (function tick() {
+    if (!document.getElementById('progress-section') ||
+        document.getElementById('progress-section').style.display === 'none') return;
+    const elapsed = (Date.now() - t0) / 1000;
+    const pct = start + (cap - start) * (1 - Math.exp(-elapsed / tau));
+    bar.style.width = pct + '%';
+    requestAnimationFrame(tick);
+  })();
+}
+function animateBurnProgress(){
+  let p=10; const bar=document.getElementById('burn-bar');
+  const iv=setInterval(()=>{ p=Math.min(p+Math.random()*4,90); bar.style.width=p+'%'; if(p>=90)clearInterval(iv); },600);
+}
+
+// ── MODALS ────────────────────────────────────────────────────────
+function confirmReset(){ document.getElementById('confirm-modal').classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{ if(e.target===e.currentTarget) el.classList.remove('show'); });
+});
+
+// ── RESET ─────────────────────────────────────────────────────────
+function resetAll(){
+  closeModal('confirm-modal'); stopTimer(); undoStack.length=0;
+  state={videoId:null,filename:null,segments:[]}; selectedFile=null;
+  document.getElementById('results-section').style.display='none';
+  document.getElementById('estimate-box').style.display='none';
+  document.getElementById('drop-zone').style.display='block';
+  document.getElementById('file-selected-state').style.display='none';
+  // Reset video player
+  const player = document.getElementById('video-player');
+  if (player) { player.src=''; player.load(); }
+  const ov = document.getElementById('video-sub-overlay'); if(ov) ov.textContent='';
+  document.getElementById('video-wrap').style.display='none';
+  document.getElementById('video-no-file').style.display='block';
+  if (state.videoBlobUrl) { URL.revokeObjectURL(state.videoBlobUrl); state.videoBlobUrl=null; }
+  document.getElementById('file-input').value='';
+  document.getElementById('transcript-hint').value='';
+  document.getElementById('transcript-area').style.display='none';
+  selectMode('file-only');
+  document.getElementById('undo-btn').style.display='none';
+  document.getElementById('paste-btn').style.display='none';
+  showProgress(false); setStep(1);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────
+function segDur(seg){ return srtToSec(seg.end)-srtToSec(seg.start); }
+function srtToSec(ts){ try{ const[h,m,r]=ts.split(':');const[s,ms]=r.replace(',','.').split('.');return+h*3600+ +m*60+ +s+(+ms||0)/1000; }catch{return 0;} }
+function secToSrt(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60),ms=Math.round((s-Math.floor(s))*1000); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`; }
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+let toastTimer;
+function toast(type,msg){
+  const el=document.getElementById('toast');
+  el.className=`show ${type}`;
+  document.getElementById('toast-msg').textContent=msg;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
+</script>
+</body>
+</html>

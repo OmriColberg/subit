@@ -1,0 +1,20 @@
+# Environment & secrets
+**/.env
+**/*.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploads & media (never commit user files)
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
