@@ -132,34 +132,32 @@
     .srt-list{max-height:290px;overflow-y:auto}
     .srt-list::-webkit-scrollbar{width:4px}
     .srt-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-    .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:0;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
+    .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
     /* Insert row between subtitles */
-    .srt-insert-row{
-      position:relative;height:0;overflow:visible;z-index:10;
-      display:flex;align-items:center;justify-content:center;
-      opacity:0;transition:opacity .15s;
-      pointer-events:none;
+    /* Number column: flex column, number on top, delete below */
+    .srt-num-col{display:flex;flex-direction:column;align-items:center;gap:4px}
+    /* Delete button: in number col, shown only when empty */
+    .srt-delete-btn{
+      display:none;padding:3px 5px;border-radius:5px;font-size:10px;font-weight:700;
+      font-family:var(--font-he);background:rgba(232,80,80,.12);
+      border:1px solid rgba(232,80,80,.35);color:var(--accent);
+      cursor:pointer;transition:all .15s;white-space:nowrap;
     }
-    .srt-insert-row:hover,
-    .srt-item:hover + .srt-insert-row,
-    .srt-item:focus-within + .srt-insert-row { opacity:1; }
-    .srt-insert-btn{
-      pointer-events:auto;
-      position:relative;
-      display:flex;align-items:center;gap:4px;
-      padding:3px 12px;border-radius:20px;
-      font-size:10px;font-weight:700;font-family:var(--font-he);
-      background:var(--surface);border:1px solid var(--border2);
-      color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;
-      transform:translateY(-50%);
-      box-shadow:0 1px 4px rgba(0,0,0,.15);
+    .srt-delete-btn:hover{background:rgba(232,80,80,.25);border-color:var(--accent)}
+    .srt-item.is-empty .srt-delete-btn{display:flex;align-items:center;gap:3px}
+    .srt-item.is-empty{border-color:rgba(232,80,80,.25);opacity:.8}
+    /* Insert-after button: inside item, shown on hover/focus-within — works on mobile too */
+    .srt-insert-after-btn{
+      display:none;margin-top:6px;width:100%;
+      padding:4px 0;border-radius:6px;font-size:10px;font-weight:700;
+      font-family:var(--font-he);background:transparent;
+      border:1px dashed var(--border2);color:var(--muted);
+      cursor:pointer;transition:all .15s;
+      align-items:center;justify-content:center;gap:4px;
     }
-    .srt-insert-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface2)}
-    /* Delete button on empty subtitle */
-    .srt-delete-btn{display:none;position:absolute;top:8px;left:8px;z-index:5;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--font-he);background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);color:var(--accent);cursor:pointer;transition:all .15s}
-    .srt-delete-btn:hover{background:rgba(232,80,80,.22);border-color:var(--accent)}
-    .srt-item.is-empty .srt-delete-btn{display:block}
-    .srt-item.is-empty{border-color:rgba(232,80,80,.25);opacity:.7}
+    .srt-insert-after-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,66,66,.05)}
+    .srt-item:hover .srt-insert-after-btn,
+    .srt-item:focus-within .srt-insert-after-btn{display:flex}
     .srt-item{position:relative}
     .srt-item:hover{border-color:var(--border2)}.srt-item:focus-within{border-color:var(--accent)}.srt-item.active-sub{border-color:var(--accent)!important;background:rgba(245,66,66,.07)}
     /* Edit hint badge */
@@ -530,10 +528,7 @@
         </div>
         <div class="action-row" id="action-row" style="display:none">
 
-          <button class="btn btn-align btn-sm" id="align-btn" onclick="runAlignWithTranscript()" style="display:none">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-            יישור לפי טקסט
-          </button>
+
           <button class="btn btn-ghost btn-sm" id="paste-btn" onclick="pasteFromClaude()" style="display:none">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
             הדבק תיקון
@@ -969,10 +964,7 @@ function showResults() {
 
   // Show align btn if transcript was provided
   const hasTranscript = document.getElementById('transcript-hint').value.trim().length > 0;
-  if (hasTranscript) {
-    document.getElementById('align-btn').style.display='inline-flex';
-    document.getElementById('action-row').style.display='flex';
-  }
+  // align runs automatically — no button needed
   renderSRTList(); syncPlainText();
   document.getElementById('srt-count').textContent=`${state.segments.length} כתוביות`;
   // Load video player
@@ -1006,25 +998,16 @@ function parseTimeInput(val) {
 }
 
 function renderSRTList() {
-  const items = [];
-  state.segments.forEach((seg, i) => {
+  const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>';
+  const plusSvg  = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+  document.getElementById('srt-list').innerHTML = state.segments.map((seg, i) => {
     const isEmpty = !seg.text.trim();
-    // Insert row (between items) — uses data-insert-after for delegation
-    if (i > 0) {
-      items.push(`<div class="srt-insert-row">
-        <button class="srt-insert-btn" data-insert-after="${i-1}" title="הוסף כתובית כאן">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          הוסף כאן
-        </button>
-      </div>`);
-    }
-    items.push(`
+    return `
     <div class="srt-item${isEmpty ? ' is-empty' : ''}" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
-      <button class="srt-delete-btn" data-delete-idx="${i}">
-        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-        מחק
-      </button>
-      <div class="srt-num">${seg.index}</div>
+      <div class="srt-num-col">
+        <div class="srt-num">${seg.index}</div>
+        <button class="srt-delete-btn" data-delete-idx="${i}">${trashSvg} מחק</button>
+      </div>
       <div>
         <div class="srt-time">
           <input class="time-input" value="${formatTimeDisplay(seg.start)}" data-idx="${i}" data-field="start" oninput="onSegChange(this)" onblur="normalizeTimeInput(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
@@ -1035,31 +1018,26 @@ function renderSRTList() {
           oninput="onSegChange(this);this.closest('.srt-item').classList.toggle('is-empty',!this.value.trim())"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){this.blur();event.preventDefault()}"
         >${seg.text}</textarea>
+        <button class="srt-insert-after-btn" data-insert-after="${i}">${plusSvg} הוסף כתובית אחרי</button>
       </div>
-    </div>`);
-  });
-  document.getElementById('srt-list').innerHTML = items.join('');
-  lucide && lucide.createIcons();
+    </div>`;
+  }).join('');
 }
 
 // ── INSERT / DELETE — event delegation on srt-list ──────────────
-// Using delegation avoids inline onclick issues with dynamic innerHTML
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('srt-list').addEventListener('click', function(e) {
-    // Insert button
-    const insertBtn = e.target.closest('[data-insert-after]');
-    if (insertBtn) {
-      e.stopPropagation();
-      insertSegmentAfter(+insertBtn.dataset.insertAfter);
-      return;
-    }
-    // Delete button
-    const deleteBtn = e.target.closest('[data-delete-idx]');
-    if (deleteBtn) {
-      e.stopPropagation();
-      deleteSegmentAt(+deleteBtn.dataset.deleteIdx);
-    }
-  });
+// Script is at bottom of body so DOM is ready — no DOMContentLoaded needed
+document.getElementById('srt-list').addEventListener('click', function(e) {
+  const insertBtn = e.target.closest('[data-insert-after]');
+  if (insertBtn) {
+    e.stopPropagation();
+    insertSegmentAfter(+insertBtn.dataset.insertAfter);
+    return;
+  }
+  const deleteBtn = e.target.closest('[data-delete-idx]');
+  if (deleteBtn) {
+    e.stopPropagation();
+    deleteSegmentAt(+deleteBtn.dataset.deleteIdx);
+  }
 });
 
 function insertSegmentAfter(i) {
@@ -1822,7 +1800,7 @@ function resetAll(){
   document.getElementById('undo-btn').style.display='none';
   document.getElementById('video-wrap').classList.remove('has-video');
   document.getElementById('action-row').style.display='none';
-  document.getElementById('align-btn').style.display='none';
+
   document.getElementById('paste-btn').style.display='none';
   document.getElementById('paste-btn').style.display='none';
   showProgress(false); setStep(1);
