@@ -132,7 +132,18 @@
     .srt-list{max-height:290px;overflow-y:auto}
     .srt-list::-webkit-scrollbar{width:4px}
     .srt-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-    .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
+    .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:0;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
+    /* Insert row between subtitles */
+    .srt-insert-row{height:6px;display:flex;align-items:center;justify-content:center;position:relative;opacity:0;transition:opacity .15s;margin:0}
+    .srt-insert-row:hover{opacity:1}
+    .srt-insert-row::before{content:'';position:absolute;left:0;right:0;height:1px;background:var(--border2)}
+    .srt-insert-btn{position:relative;z-index:1;display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--font-he);background:var(--surface);border:1px solid var(--border2);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+    .srt-insert-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface2)}
+    /* Delete button on empty subtitle */
+    .srt-delete-btn{display:none;position:absolute;top:8px;left:8px;z-index:5;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--font-he);background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);color:var(--accent);cursor:pointer;transition:all .15s}
+    .srt-delete-btn:hover{background:rgba(232,80,80,.22);border-color:var(--accent)}
+    .srt-item.is-empty .srt-delete-btn{display:block}
+    .srt-item.is-empty{border-color:rgba(232,80,80,.25);opacity:.7}
     .srt-item{position:relative}
     .srt-item:hover{border-color:var(--border2)}.srt-item:focus-within{border-color:var(--accent)}.srt-item.active-sub{border-color:var(--accent)!important;background:rgba(245,66,66,.07)}
     /* Edit hint badge */
@@ -979,8 +990,24 @@ function parseTimeInput(val) {
 }
 
 function renderSRTList() {
-  document.getElementById('srt-list').innerHTML = state.segments.map((seg,i)=>`
-    <div class="srt-item" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
+  const items = [];
+  state.segments.forEach((seg, i) => {
+    const isEmpty = !seg.text.trim();
+    // Insert row (between items)
+    if (i > 0) {
+      items.push(`<div class="srt-insert-row">
+        <button class="srt-insert-btn" onclick="insertSegmentAfter(${i-1})" title="הוסף כתובית כאן">
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          הוסף כאן
+        </button>
+      </div>`);
+    }
+    items.push(`
+    <div class="srt-item${isEmpty ? ' is-empty' : ''}" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
+      <button class="srt-delete-btn" onclick="deleteSegment(event,${i})">
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+        מחק
+      </button>
       <div class="srt-num">${seg.index}</div>
       <div>
         <div class="srt-time">
@@ -988,9 +1015,54 @@ function renderSRTList() {
           <span style="color:var(--muted);margin:0 4px;font-size:16px;font-weight:700">←</span>
           <input class="time-input" value="${formatTimeDisplay(seg.end)}" data-idx="${i}" data-field="end" oninput="onSegChange(this)" onblur="normalizeTimeInput(this)" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
         </div>
-        <textarea class="text-input" rows="2" data-idx="${i}" data-field="text" oninput="onSegChange(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){this.blur();event.preventDefault()}">${seg.text}</textarea>
+        <textarea class="text-input" rows="2" data-idx="${i}" data-field="text"
+          oninput="onSegChange(this);this.closest('.srt-item').classList.toggle('is-empty',!this.value.trim())"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){this.blur();event.preventDefault()}"
+        >${seg.text}</textarea>
       </div>
-    </div>`).join('');
+    </div>`);
+  });
+  document.getElementById('srt-list').innerHTML = items.join('');
+  lucide && lucide.createIcons();
+}
+
+// ── INSERT SEGMENT ────────────────────────────────────────────────
+function insertSegmentAfter(i) {
+  pushUndo();
+  const segs = state.segments;
+  const curr = segs[i];
+  const next = segs[i + 1];
+  // Timing: split the gap between curr.end and next.start evenly
+  const gapStart = curr.end;
+  const gapEnd   = next ? next.start : curr.end + 3000;
+  const mid      = Math.floor((gapStart + gapEnd) / 2);
+  const newSeg   = { index: 0, start: gapStart, end: mid, text: '' };
+  segs.splice(i + 1, 0, newSeg);
+  reindexSegments();
+  renderSRTList(); syncPlainText(); persistSRT();
+  // Focus the new segment's textarea
+  setTimeout(() => {
+    const textareas = document.querySelectorAll('#srt-list .text-input');
+    if (textareas[i + 1]) {
+      textareas[i + 1].focus();
+      // Scroll into view
+      textareas[i + 1].closest('.srt-item').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, 30);
+}
+
+// ── DELETE SEGMENT ────────────────────────────────────────────────
+function deleteSegment(e, i) {
+  e.stopPropagation();
+  pushUndo();
+  state.segments.splice(i, 1);
+  reindexSegments();
+  renderSRTList(); syncPlainText(); persistSRT(); updateUndoBtn();
+}
+
+// ── REINDEX ───────────────────────────────────────────────────────
+function reindexSegments() {
+  state.segments.forEach((s, i) => s.index = i + 1);
 }
 
 // Plain text: one line per subtitle
