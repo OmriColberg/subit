@@ -134,10 +134,26 @@
     .srt-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
     .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:0;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
     /* Insert row between subtitles */
-    .srt-insert-row{height:6px;display:flex;align-items:center;justify-content:center;position:relative;opacity:0;transition:opacity .15s;margin:0}
-    .srt-insert-row:hover{opacity:1}
-    .srt-insert-row::before{content:'';position:absolute;left:0;right:0;height:1px;background:var(--border2)}
-    .srt-insert-btn{position:relative;z-index:1;display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--font-he);background:var(--surface);border:1px solid var(--border2);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+    .srt-insert-row{
+      position:relative;height:0;overflow:visible;z-index:10;
+      display:flex;align-items:center;justify-content:center;
+      opacity:0;transition:opacity .15s;
+      pointer-events:none;
+    }
+    .srt-insert-row:hover,
+    .srt-item:hover + .srt-insert-row,
+    .srt-item:focus-within + .srt-insert-row { opacity:1; }
+    .srt-insert-btn{
+      pointer-events:auto;
+      position:relative;
+      display:flex;align-items:center;gap:4px;
+      padding:3px 12px;border-radius:20px;
+      font-size:10px;font-weight:700;font-family:var(--font-he);
+      background:var(--surface);border:1px solid var(--border2);
+      color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;
+      transform:translateY(-50%);
+      box-shadow:0 1px 4px rgba(0,0,0,.15);
+    }
     .srt-insert-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface2)}
     /* Delete button on empty subtitle */
     .srt-delete-btn{display:none;position:absolute;top:8px;left:8px;z-index:5;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--font-he);background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);color:var(--accent);cursor:pointer;transition:all .15s}
@@ -993,10 +1009,10 @@ function renderSRTList() {
   const items = [];
   state.segments.forEach((seg, i) => {
     const isEmpty = !seg.text.trim();
-    // Insert row (between items)
+    // Insert row (between items) — uses data-insert-after for delegation
     if (i > 0) {
       items.push(`<div class="srt-insert-row">
-        <button class="srt-insert-btn" onclick="insertSegmentAfter(${i-1})" title="הוסף כתובית כאן">
+        <button class="srt-insert-btn" data-insert-after="${i-1}" title="הוסף כתובית כאן">
           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           הוסף כאן
         </button>
@@ -1004,7 +1020,7 @@ function renderSRTList() {
     }
     items.push(`
     <div class="srt-item${isEmpty ? ' is-empty' : ''}" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
-      <button class="srt-delete-btn" onclick="deleteSegment(event,${i})">
+      <button class="srt-delete-btn" data-delete-idx="${i}">
         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>
         מחק
       </button>
@@ -1026,34 +1042,48 @@ function renderSRTList() {
   lucide && lucide.createIcons();
 }
 
-// ── INSERT SEGMENT ────────────────────────────────────────────────
+// ── INSERT / DELETE — event delegation on srt-list ──────────────
+// Using delegation avoids inline onclick issues with dynamic innerHTML
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('srt-list').addEventListener('click', function(e) {
+    // Insert button
+    const insertBtn = e.target.closest('[data-insert-after]');
+    if (insertBtn) {
+      e.stopPropagation();
+      insertSegmentAfter(+insertBtn.dataset.insertAfter);
+      return;
+    }
+    // Delete button
+    const deleteBtn = e.target.closest('[data-delete-idx]');
+    if (deleteBtn) {
+      e.stopPropagation();
+      deleteSegmentAt(+deleteBtn.dataset.deleteIdx);
+    }
+  });
+});
+
 function insertSegmentAfter(i) {
   pushUndo();
   const segs = state.segments;
   const curr = segs[i];
   const next = segs[i + 1];
-  // Timing: split the gap between curr.end and next.start evenly
+  // Times are in seconds; add 2s gap if last segment
   const gapStart = curr.end;
-  const gapEnd   = next ? next.start : curr.end + 3000;
-  const mid      = Math.floor((gapStart + gapEnd) / 2);
-  const newSeg   = { index: 0, start: gapStart, end: mid, text: '' };
-  segs.splice(i + 1, 0, newSeg);
+  const gapEnd   = next ? next.start : curr.end + 2;
+  const mid      = Math.round(((gapStart + gapEnd) / 2) * 100) / 100;
+  segs.splice(i + 1, 0, { index: 0, start: gapStart, end: mid, text: '' });
   reindexSegments();
   renderSRTList(); syncPlainText(); persistSRT();
-  // Focus the new segment's textarea
   setTimeout(() => {
     const textareas = document.querySelectorAll('#srt-list .text-input');
     if (textareas[i + 1]) {
       textareas[i + 1].focus();
-      // Scroll into view
       textareas[i + 1].closest('.srt-item').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-  }, 30);
+  }, 40);
 }
 
-// ── DELETE SEGMENT ────────────────────────────────────────────────
-function deleteSegment(e, i) {
-  e.stopPropagation();
+function deleteSegmentAt(i) {
   pushUndo();
   state.segments.splice(i, 1);
   reindexSegments();
