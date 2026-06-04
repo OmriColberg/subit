@@ -16,6 +16,9 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException, BackgroundTa
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+import logging
+import json
+import datetime
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Hebrew Subtitle Generator", version="1.0.0")
@@ -60,6 +63,56 @@ def cleanup_old_files():
             pass
 
 print("Subit backend ready ✓")
+
+# ── Structured API call logger ─────────────────────────────────────────────────
+LOG_FILE = Path("logs/api_calls.jsonl")
+LOG_FILE.parent.mkdir(exist_ok=True)
+
+# Configure a simple file logger for API errors
+_api_logger = logging.getLogger("subit.api")
+_api_logger.setLevel(logging.INFO)
+_fh = logging.FileHandler(LOG_FILE.parent / "errors.log", encoding="utf-8")
+_fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+_api_logger.addHandler(_fh)
+# Also log to stdout (visible in Render logs)
+_sh = logging.StreamHandler()
+_sh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+_api_logger.addHandler(_sh)
+
+def api_log(
+    service: str,          # "whisper" | "gpt"
+    status: str,           # "ok" | "error" | "retry"
+    ip: str = "-",
+    filename: str = "-",
+    duration_s: float = 0.0,
+    error: str = "",
+    extra: dict | None = None,
+):
+    """Append one JSONL line to logs/api_calls.jsonl and log errors to errors.log."""
+    entry = {
+        "ts": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "service": service,
+        "status": status,
+        "ip": ip,
+        "file": filename,
+        "duration_s": round(duration_s, 2),
+        "error": error,
+        **(extra or {}),
+    }
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception as e:
+        _api_logger.warning(f"Could not write to {LOG_FILE}: {e}")
+    if status == "error":
+        _api_logger.error(
+            f"[{service.upper()}] {status} | ip={ip} file={filename} "
+            f"dur={duration_s:.1f}s | {error[:200]}"
+        )
+    elif status in ("ok", "retry"):
+        _api_logger.info(
+            f"[{service.upper()}] {status} | ip={ip} file={filename} dur={duration_s:.1f}s"
+        )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def seconds_to_srt_time(s: float) -> str:
@@ -161,9 +214,16 @@ class BurnRequest(BaseModel):
     font_style:    str = "normal"
     bg_opacity:    int = 0
 
-# ── Gemini helper ─────────────────────────────────────────────────────────────
-async def call_openai(prompt: str, system: str = "",
-                      temperature: float = 0.1, timeout: int = 120) -> str:
+# ── OpenAI GPT helper ────────────────────────────────────────────────────────
+async def call_openai(
+    prompt: str,
+    system: str = "",
+    temperature: float = 0.1,
+    timeout: int = 120,
+    _log_ip: str = "-",
+    _log_file: str = "-",
+    _log_op: str = "gpt",          # label shown in logs (e.g. "ai-fix", "align")
+) -> str:
     api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
         raise HTTPException(500, "OPENAI_API_KEY לא מוגדר בשרת")
@@ -172,29 +232,61 @@ async def call_openai(prompt: str, system: str = "",
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     retry_delays = [10, 20, 40]
+    t0 = time.time()
     for attempt in range(3):
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}",
-                         "Content-Type": "application/json"},
-                json={"model": "gpt-5.4-mini",
-                      "messages": messages,
-                      "temperature": temperature,
-                      "max_completion_tokens": 8192},
-            )
-        if resp.status_code in (429, 503):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}",
+                             "Content-Type": "application/json"},
+                    json={"model": "gpt-5.4-mini",
+                          "messages": messages,
+                          "temperature": temperature,
+                          "max_completion_tokens": 8192},
+                )
+        except Exception as exc:
+            dur = time.time() - t0
+            api_log("gpt", "error", _log_ip, _log_file, dur,
+                    f"network error (attempt {attempt+1}): {exc}", {"op": _log_op})
             if attempt < 2:
                 await asyncio.sleep(retry_delays[attempt])
                 continue
-            raise HTTPException(429, f"שירות ה-AI עמוס כרגע — אנא המתן מספר שניות ונסה שוב")
+            raise HTTPException(500, f"שגיאת רשת בקריאה ל-GPT: {exc}")
+
+        if resp.status_code in (429, 503):
+            dur = time.time() - t0
+            api_log("gpt", "retry", _log_ip, _log_file, dur,
+                    f"rate-limited {resp.status_code} (attempt {attempt+1})", {"op": _log_op})
+            if attempt < 2:
+                await asyncio.sleep(retry_delays[attempt])
+                continue
+            api_log("gpt", "error", _log_ip, _log_file, time.time()-t0,
+                    f"rate-limited after 3 attempts: {resp.status_code}", {"op": _log_op})
+            raise HTTPException(429, "שירות ה-AI עמוס כרגע — אנא המתן מספר שניות ונסה שוב")
+
         if resp.status_code != 200:
-            print(f"OpenAI error {resp.status_code}: {resp.text[:500]}")
+            dur = time.time() - t0
+            err_body = resp.text[:500]
+            api_log("gpt", "error", _log_ip, _log_file, dur,
+                    f"HTTP {resp.status_code}: {err_body}", {"op": _log_op})
+            print(f"OpenAI error {resp.status_code}: {err_body}")
             raise HTTPException(500, f"שגיאת OpenAI API: {resp.text[:300]}")
+
         data = resp.json()
         try:
-            return data["choices"][0]["message"]["content"]
+            result = data["choices"][0]["message"]["content"]
+            dur = time.time() - t0
+            api_log("gpt", "ok", _log_ip, _log_file, dur, extra={
+                "op": _log_op,
+                "prompt_tokens": data.get("usage", {}).get("prompt_tokens"),
+                "completion_tokens": data.get("usage", {}).get("completion_tokens"),
+            })
+            return result
         except (KeyError, IndexError):
+            dur = time.time() - t0
+            api_log("gpt", "error", _log_ip, _log_file, dur,
+                    f"unexpected response shape: {str(data)[:200]}", {"op": _log_op})
             raise HTTPException(500, f"תשובה לא צפויה מ-OpenAI: {str(data)[:200]}")
 
 def parse_numbered_lines(result_text: str, segments: list) -> list:
@@ -253,6 +345,7 @@ async def transcribe(
     with open(input_path, "wb") as f:
         f.write(content)
 
+    t_whisper = time.time()
     try:
         api_key = os.getenv("OPENAI_API_KEY", "")
         if not api_key:
@@ -261,6 +354,7 @@ async def transcribe(
         # Compress to MP3 if file > 24MB (Whisper API limit is 25MB)
         send_path = input_path
         compressed_path = None
+        file_size_mb = round(input_path.stat().st_size / 1024 / 1024, 2)
         if input_path.stat().st_size > 24 * 1024 * 1024:
             compressed_path = UPLOAD_DIR / f"{video_id}_compressed.mp3"
             compress_cmd = [
@@ -291,11 +385,24 @@ async def transcribe(
             cleanup_files(compressed_path)
 
         if resp.status_code != 200:
+            dur = time.time() - t_whisper
+            api_log("whisper", "error", client_ip, file.filename, dur,
+                    f"HTTP {resp.status_code}: {resp.text[:400]}",
+                    {"size_mb": file_size_mb})
             raise HTTPException(500, f"שגיאת Whisper API: {resp.text[:300]}")
         result = resp.json()
+        dur = time.time() - t_whisper
+        api_log("whisper", "ok", client_ip, file.filename, dur, extra={
+            "size_mb": file_size_mb,
+            "segments": len(result.get("segments", [])),
+            "has_prompt": bool(initial_prompt),
+        })
     except HTTPException:
         raise
     except Exception as e:
+        dur = time.time() - t_whisper
+        api_log("whisper", "error", client_ip, file.filename, dur, str(e),
+                {"size_mb": getattr(input_path.stat(), "st_size", 0) / 1024 / 1024})
         cleanup_files(input_path)
         raise HTTPException(500, f"שגיאת תמלול: {str(e)}")
 
@@ -432,28 +539,58 @@ async def save_edited_srt(data: dict):
     return {"status": "saved"}
 
 @app.post("/align-with-transcript")
-async def align_with_transcript(data: dict):
+async def align_with_transcript(data: dict, request: Request):
     segments   = data.get("segments", [])
     transcript = data.get("transcript", "").strip()
+    video_id   = data.get("video_id", "-")
+    client_ip  = request.client.host if request.client else "unknown"
+
     if not transcript:
         raise HTTPException(400, "לא סופק טקסט מקורי")
+    if not segments:
+        raise HTTPException(400, "לא סופקו כתוביות")
+
     n = len(segments)
-    seg_text = "\n".join(f"{s['index']}. {s['text']}" for s in segments)
+
+    # Build segment list with word-count hints to guide proportional splitting
+    seg_lines = []
+    for s in segments:
+        wc = len(s["text"].split())
+        seg_lines.append(f"{s['index']}. [{wc} מילים] {s['text']}")
+    seg_text = "\n".join(seg_lines)
+
     system = (
-        "קיבלת שני דברים:\n"
-        "1. טקסט מדויק של הסרטון\n"
-        f"2. רשימת {n} כתוביות ממוספרת שנוצרה מתמלול אוטומטי — החלוקה לקטעים נכונה, הטקסט שגוי\n"
-        f"חלק את הטקסט המדויק בין {n} הכתוביות לפי הסדר, בהתאם לאורך כל כתובית מקורית.\n"
-        "אל תוסיף ואל תגרע מילה מהטקסט המדויק.\n"
-        "החזר אך ורק את הרשימה הממוספרת המתוקנת, ללא הסברים."
+        "אתה מומחה עריכת כתוביות בעברית.\n"
+        f"קיבלת טקסט מדויק של סרטון ורשימה של {n} כתוביות שנוצרו מתמלול אוטומטי.\n"
+        "החלוקה לזמנים נכונה — רק הטקסט שגוי.\n\n"
+        "המשימה:\n"
+        f"חלק את הטקסט המדויק בין בדיוק {n} כתוביות, בסדר כרונולוגי.\n\n"
+        "כללים:\n"
+        "1. אל תוסיף ואל תגרע אף מילה מהטקסט המדויק.\n"
+        "2. שמור על פרופורציה: כתוביות עם יותר מילים מקוריות (מסומן [X מילים]) מקבלות יחסית יותר מילים.\n"
+        "3. חתוך תמיד בגבול מילה שלמה — לעולם לא באמצע מילה.\n"
+        "4. העדף חיתוך לאחר סימן פיסוק (פסיק, נקודה, שאלה) כשאפשר.\n"
+        "5. כל כתובית חייבת לקבל לפחות מילה אחת.\n\n"
+        "החזר אך ורק את הרשימה הממוספרת בפורמט:\n"
+        "1. טקסט הכתובית\n"
+        "2. טקסט הכתובית\n"
+        "... ללא הסברים, ללא כותרות, ללא סוגריים."
     )
-    prompt = f"טקסט מדויק:\n{transcript}\n\nכתוביות:\n{seg_text}"
-    result_text = await call_openai(prompt, system=system, temperature=0.1)
+    prompt = (
+        f"טקסט מדויק:\n{transcript}\n\n"
+        f"כתוביות מקוריות (כולל ספירת מילים לכל אחת):\n{seg_text}"
+    )
+    result_text = await call_openai(
+        prompt, system=system, temperature=0.05,
+        _log_ip=client_ip, _log_file=video_id, _log_op="align"
+    )
     return {"segments": parse_numbered_lines(result_text, segments)}
 
 @app.post("/ai-fix")
-async def ai_fix_text(data: dict):
-    segments = data.get("segments", [])
+async def ai_fix_text(data: dict, request: Request):
+    segments  = data.get("segments", [])
+    video_id  = data.get("video_id", "-")
+    client_ip = request.client.host if request.client else "unknown"
     lines = "\n".join(f"{s['index']}. {s['text']}" for s in segments)
     system = (
         "אתה עורך תמלולים בעברית.\n"
@@ -463,5 +600,53 @@ async def ai_fix_text(data: dict):
         "החזר את אותה רשימה ממוספרת בדיוק, שורה לשורה, ללא הסברים."
     )
     prompt = f"כתוביות לתיקון:\n{lines}"
-    result_text = await call_openai(prompt, system=system, temperature=0.3)
+    result_text = await call_openai(
+        prompt, system=system, temperature=0.3,
+        _log_ip=client_ip, _log_file=video_id, _log_op="ai-fix"
+    )
     return {"segments": parse_numbered_lines(result_text, segments)}
+
+# ── Logs viewer endpoint ──────────────────────────────────────────────────────
+@app.get("/admin/logs")
+async def view_logs(
+    request: Request,
+    service: str = "",
+    status: str = "",
+    last_n: int = 100,
+):
+    """
+    Read the last N log entries from logs/api_calls.jsonl.
+    Optional filters: ?service=whisper|gpt  &status=error|ok|retry
+    Protect with ADMIN_TOKEN env var: add ?token=... to request.
+    """
+    admin_token = os.getenv("ADMIN_TOKEN", "")
+    if admin_token:
+        provided = request.query_params.get("token", "")
+        if provided != admin_token:
+            raise HTTPException(403, "Forbidden")
+
+    if not LOG_FILE.exists():
+        return JSONResponse({"entries": [], "total": 0, "filtered": 0})
+
+    entries = []
+    with open(LOG_FILE, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except Exception:
+                pass
+
+    total = len(entries)
+    if service:
+        entries = [e for e in entries if e.get("service") == service]
+    if status:
+        entries = [e for e in entries if e.get("status") == status]
+
+    return JSONResponse({
+        "total": total,
+        "filtered": len(entries),
+        "entries": entries[-last_n:],
+    })

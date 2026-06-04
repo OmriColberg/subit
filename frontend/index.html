@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.383.0/dist/umd/lucide.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -28,8 +29,9 @@
     .logo-icon{width:44px;height:44px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 24px var(--glow)}
     .logo h1{font-size:22px;font-weight:700;letter-spacing:-.5px}
     .logo h1 span{color:var(--accent)}
-    .theme-btn{padding:8px 14px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--text);font-family:var(--font-he);transition:all .2s;white-space:nowrap}
-    .theme-btn:hover{border-color:var(--accent)}
+    .theme-btn{padding:9px 16px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);font-family:var(--font-he);transition:all .2s;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .theme-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--border);box-shadow:0 0 0 3px rgba(245,66,66,.1)}
+    .theme-btn:active{transform:scale(.97)}
 
     .steps{display:flex;margin-bottom:36px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
     .step{flex:1;padding:13px 12px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--muted);border-left:1px solid var(--border);transition:all .3s}
@@ -95,7 +97,7 @@
 
     /* ── Results ── */
     #results-section{display:none}
-    .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
+    .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
     #autosave-indicator{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;opacity:0;transition:opacity .4s;margin-right:auto}
     #autosave-indicator.show{opacity:1}
     .saved-dot{width:6px;height:6px;border-radius:50%;background:var(--success)}
@@ -113,8 +115,8 @@
     .btn-ai:hover{background:rgba(80,200,122,.2)}
     .btn-align{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
     .btn-align:hover{background:rgba(59,130,246,.18)}
-    .btn-undo{background:rgba(107,107,136,.1);color:var(--muted);border:1px solid var(--border)}
-    .btn-undo:hover{color:var(--text);border-color:var(--border2)}
+    .btn-undo{background:rgba(59,130,246,.12);color:#60a5fa;border:1px solid rgba(59,130,246,.4);font-weight:700;padding:9px 18px;font-size:13px}
+    .btn-undo:hover{background:rgba(59,130,246,.22);border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
     .btn-sm{padding:7px 14px;font-size:12px}
     .btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
 
@@ -236,7 +238,7 @@
     /* ── Video player ── */
     .video-wrap{
       position:relative;background:#000;border-radius:10px;
-      overflow:hidden;margin-bottom:16px;
+      overflow:hidden;margin-bottom:8px;
       max-height:320px;display:flex;align-items:center;justify-content:center;
     }
     .video-wrap video{ width:100%;max-height:320px;display:block;outline:none; }
@@ -247,12 +249,55 @@
       color:#fff;text-shadow:2px 2px 3px #000,-1px -1px 2px #000;
       transition:opacity .1s;z-index:10;bottom:18px;
     }
-    /* Fullscreen: overlay stays visible because it's inside .video-wrap */
-    .video-wrap:fullscreen{ max-height:100vh; }
-    .video-wrap:-webkit-full-screen{ max-height:100vh; }
-    .video-wrap video:fullscreen,.video-wrap video:-webkit-full-screen{
-      max-height:100vh;width:100%;
+    /* Custom fullscreen button */
+    /* fs-btn: only visible when video is loaded (.has-video) AND wrap is hovered */
+    .fs-btn{
+      position:absolute;
+      top:8px;right:8px;       /* top-right corner — never overlaps native controls */
+      z-index:20;
+      background:rgba(0,0,0,.5);border:none;border-radius:5px;
+      padding:5px 6px;cursor:pointer;color:#fff;
+      /* Hidden by default — CSS hover on wrap reveals it */
+      display:none;
+      align-items:center;justify-content:center;
+      opacity:0;transition:opacity .15s;
     }
+    .video-wrap.has-video:hover .fs-btn{ display:flex; opacity:1; }
+    .fs-btn:hover{background:rgba(0,0,0,.75)}
+    .fs-btn svg{display:block;filter:drop-shadow(0 0 1px rgba(0,0,0,.9))}
+    /* Fullscreen: request on .video-wrap, overlay stays inside */
+    .video-wrap:fullscreen,
+    .video-wrap:-webkit-full-screen,
+    .video-wrap:-moz-full-screen{
+      max-height:100vh;width:100vw;max-width:100vw;
+      background:#000;display:flex;align-items:center;justify-content:center;
+    }
+    .video-wrap:fullscreen video,
+    .video-wrap:-webkit-full-screen video{
+      max-height:100vh;width:100%;object-fit:contain;
+    }
+    .video-wrap:fullscreen .video-sub-overlay,
+    .video-wrap:-webkit-full-screen .video-sub-overlay{
+      font-size:32px;bottom:36px;
+    }
+
+    /* Lucide icon sizing */
+    .lucide{width:16px;height:16px;stroke-width:2;vertical-align:middle;flex-shrink:0}
+    .lucide-lg{width:20px;height:20px}
+    .logo-icon .lucide{width:22px;height:22px;stroke:#fff}
+    .upload-icon-wrap{margin-bottom:16px;display:block;animation:float 3s ease-in-out infinite}
+    .upload-icon-wrap svg{width:52px;height:52px;stroke:var(--muted);stroke-width:1.5}
+
+    /* Settings gear btn */
+    .settings-gear-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:8px 14px;border-radius:8px;
+      background:var(--surface2);border:1px solid var(--border2);
+      cursor:pointer;font-family:var(--font-he);font-size:13px;
+      font-weight:600;color:var(--muted);transition:all .2s;
+    }
+    .settings-gear-btn:hover{border-color:var(--accent);color:var(--text)}
+    .settings-gear-btn:active{transform:scale(.97)}
     .video-no-file{
       padding:32px;text-align:center;color:var(--muted);
       font-size:13px;background:var(--surface2);border-radius:10px;
@@ -266,13 +311,13 @@
 
   <header>
     <div class="logo">
-      <div class="logo-icon">🎬</div>
+      <div class="logo-icon"><i data-lucide="film" class="lucide"></i></div>
       <div>
         <h1><span>Subit</span></h1>
         <div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">מחולל כתוביות בעברית</div>
       </div>
     </div>
-    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ יהי אור</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">יהי אור</button>
   </header>
 
   <div class="steps">
@@ -283,17 +328,23 @@
 
   <!-- Upload card -->
   <div class="card" id="upload-card">
-    <div class="card-title">העלאת קובץ וידאו או אודיו</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">העלאת קובץ וידאו או אודיו</div>
+      <button class="settings-gear-btn" onclick="openSettingsModal()" style="font-size:12px;padding:5px 10px;font-weight:500">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        הגדרות
+      </button>
+    </div>
 
     <!-- Mode selector -->
     <div class="mode-selector" id="mode-selector">
       <button class="mode-btn active" id="mode-file-only" onclick="selectMode('file-only')">
-        <span class="mode-icon">🎥</span>
+        <span class="mode-icon"><i data-lucide="video" style="width:28px;height:28px;stroke:var(--muted)"></i></span>
         <span class="mode-title">יש לי קובץ וידאו/אודיו</span>
         <span class="mode-sub">ניצור כתוביות אוטומטיות</span>
       </button>
       <button class="mode-btn" id="mode-with-text" onclick="selectMode('with-text')">
-        <span class="mode-icon">📝</span>
+        <span class="mode-icon"><i data-lucide="file-text" style="width:28px;height:28px;stroke:#60a5fa"></i></span>
         <span class="mode-title">יש לי גם טקסט מוכן</span>
         <span class="mode-sub" style="color:#60a5fa;font-weight:600">כתוביות מדויקות יותר ✨</span>
       </button>
@@ -306,20 +357,14 @@
         style="min-height:120px;font-size:15px"></textarea>
     </div>
 
-    <!-- Settings bar -->
-    <div class="settings-bar">
-      <div class="setting-item">
-        <span class="setting-label">מקסימום מילים בכתובית:</span>
-        <input type="number" class="setting-input" id="max-words" min="1" max="30"
-          value="4" title="ריק = כמות מילים לפי ההיגיון"/>
-        <span class="setting-hint">ריק = כמות מילים לפי ההיגיון</span>
-      </div>
-    </div>
+
+    <!-- Hidden max-words input (still used in JS) -->
+    <input type="number" id="max-words" value="4" style="display:none"/>
 
     <!-- Drop zone (hidden after file picked) -->
     <div id="drop-zone" onclick="document.getElementById('file-input').click()">
       <input type="file" id="file-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg"/>
-      <span class="upload-icon">🎥</span>
+      <span class="upload-icon-wrap"><i data-lucide="upload-cloud" style="width:52px;height:52px;stroke:var(--muted);stroke-width:1.5"></i></span>
       <div class="upload-title">העלה קובץ ותקבל כתוביות בעברית תוך דקות</div>
       <div class="upload-sub">MP4, MOV, AVI, MKV, WebM, MP3, WAV, M4A</div>
       <button class="btn btn-primary" type="button"
@@ -330,10 +375,10 @@
 
     <!-- File selected state (shown instead of drop zone) -->
     <div id="file-selected-state" style="display:none;padding:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;text-align:center">
-      <div style="font-size:36px;margin-bottom:10px">🎥</div>
+      <div style="margin-bottom:10px;display:flex;justify-content:center"><i data-lucide="file-video" style="width:40px;height:40px;stroke:var(--accent);stroke-width:1.5"></i></div>
       <div id="selected-filename" style="font-size:16px;font-weight:600;margin-bottom:4px;word-break:break-all"></div>
       <div id="selected-filesize" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
-      <button class="btn btn-ghost btn-sm" onclick="confirmClearFile()">✕ בחר קובץ אחר</button>
+      <button class="btn btn-ghost btn-sm" onclick="confirmClearFile()"><i data-lucide="x" class="lucide"></i> בחר קובץ אחר</button>
     </div>
 
     <!-- Estimate box - appears after file selection -->
@@ -354,14 +399,14 @@
       <div id="start-section" style="margin-top:16px">
         <button class="btn btn-primary" id="start-btn" onclick="startTranscription()"
           style="width:100%;justify-content:center;padding:14px 20px;font-size:16px;font-weight:700">
-          🎬 צור לי כתוביות
+          <i data-lucide="wand-2" class="lucide lucide-lg"></i> צור לי כתוביות
         </button>
 
       </div>
       <!-- Timer -->
       <div id="timer-section" style="display:none">
         <div class="timer-display" id="timer-display">0%</div>
-        <div class="timer-sub">🔥 הכתוביות על האש...</div>
+        <div class="timer-sub" style="display:flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="flame" class="lucide" style="stroke:#f59e0b"></i> הכתוביות על האש...</div>
       </div>
     </div>
 
@@ -398,33 +443,48 @@
 
     <div class="card">
       <div class="tabs">
-        <button class="tab active" onclick="switchTab('editor')">✏️ עורך כתוביות</button>
-        <button class="tab" onclick="switchTab('text')">📝 טקסט גולמי לעריכה</button>
+        <button class="tab active" onclick="switchTab('editor')"><i data-lucide="edit-3" class="lucide"></i> עורך כתוביות</button>
+        <button class="tab" onclick="switchTab('text')"><i data-lucide="align-left" class="lucide"></i> טקסט גולמי לעריכה</button>
       </div>
 
       <div class="tab-content active" id="tab-editor">
         <!-- Video player -->
         <div id="video-no-file" class="video-no-file">
-          🎬 הוידאו יופיע כאן לאחר העלאה - תוכל לצפות בכתוביות בזמן אמת
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><i data-lucide="monitor-play" style="width:36px;height:36px;stroke:var(--muted);stroke-width:1.5"></i><span>הוידאו יופיע כאן לאחר העלאה — תוכל לצפות בכתוביות בזמן אמת</span></div>
         </div>
         <div class="video-wrap" id="video-wrap" style="display:none">
-          <video id="video-player" controls controlsList="nodownload" preload="metadata"
+          <video id="video-player" controls controlsList="nodownload nofullscreen" preload="metadata"
             ontimeupdate="syncOverlaySubtitle()">
           </video>
           <div class="video-sub-overlay" id="video-sub-overlay"></div>
+          <button class="fs-btn" id="fs-btn" onclick="toggleVideoFullscreen()" title="מסך מלא">
+            <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            <svg id="fs-icon-compress" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+          </button>
         </div>
 
         <!-- Download buttons below video -->
-        <div id="download-row" style="display:none;margin-bottom:8px">
+        <div id="download-row" style="display:none;margin-bottom:4px">
           <button class="btn btn-primary" id="burn-btn" disabled
+            title="פיצ'ר זה יופעל בעדכון הבא של השרת"
             style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:700;
-            opacity:0.5;cursor:not-allowed">
-            🎬 הורד סרטון עם כתוביות - בקרוב
+            opacity:0.45;cursor:not-allowed;position:relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z"/><path d="M6 18h12"/><path d="M6 14h12"/><rect width="2" height="4" x="11" y="14"/></svg>
+            הורד סרטון עם כתוביות
+            <span style="position:absolute;top:-1px;left:-1px;font-size:9px;font-weight:800;
+              background:#3b82f6;color:#fff;padding:2px 6px;border-radius:4px 0 4px 0;
+              letter-spacing:.5px;text-transform:uppercase">בקרוב</span>
           </button>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn btn-ghost btn-sm" onclick="downloadSRT()"
-              style="flex:1;justify-content:center;font-size:12px">
-              ⬇ הורד קובץ SRT
+            <button onclick="downloadSRT()"
+              style="flex:1;justify-content:center;font-size:12px;font-weight:700;
+              display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;
+              cursor:pointer;font-family:var(--font-he);transition:all .2s;
+              background:var(--accent);color:#fff;border:none;
+              box-shadow:0 2px 8px rgba(232,80,80,.3)"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <i data-lucide="download" style="width:14px;height:14px;flex-shrink:0"></i>
+              הורד SRT
             </button>
             <button onclick="openBurnSettings()"
               style="flex:1;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;
@@ -433,7 +493,7 @@
               display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s"
               onmouseover="this.style.borderColor='var(--accent)'"
               onmouseout="this.style.borderColor='var(--border2)'">
-              🎨 עיצוב כתוביות
+              <i data-lucide="palette" style="width:14px;height:14px;flex-shrink:0"></i> עיצוב כתוביות
             </button>
           </div>
           <div id="burn-progress" style="display:none;margin-top:10px">
@@ -441,10 +501,25 @@
             <div class="progress-status"><div class="dot"></div><span>צורב כתוביות לסרטון...</span></div>
           </div>
         </div>
+        <div class="action-row" id="action-row" style="display:none">
+
+          <button class="btn btn-align btn-sm" id="align-btn" onclick="runAlignWithTranscript()" style="display:none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            יישור לפי טקסט
+          </button>
+          <button class="btn btn-ghost btn-sm" id="paste-btn" onclick="pasteFromClaude()" style="display:none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+            הדבק תיקון
+          </button>
+
+        </div>
         <div class="srt-toolbar">
           <span class="srt-count" id="srt-count"></span>
-          <span style="font-size:11px;color:var(--muted)">✏️ לחץ על כתובית לעריכה | לחיצה ראשונה = קפיצה בסרטון</span>
-          <button class="btn btn-undo btn-sm" onclick="undoChange()" id="undo-btn" style="display:none">↩ בטל שינוי</button>
+          <span style="font-size:11px;color:var(--muted)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            לחץ על כתובית לעריכה | לחיצה ראשונה = קפיצה בסרטון
+          </span>
+          <button class="btn btn-undo btn-sm" onclick="undoChange()" id="undo-btn" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg> בטל שינוי</button>
         </div>
         <div class="srt-list-wrap">
           <div class="srt-loading-overlay" id="srt-loading-overlay">
@@ -461,7 +536,7 @@
         </p>
         <textarea id="plain-text-area" spellcheck="false" oninput="onPlainTextChange()"></textarea>
         <div style="margin-top:12px">
-          <button class="btn btn-ghost btn-sm" onclick="copyText()">📋 העתק הכל</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyText()"><i data-lucide="copy" class="lucide"></i> העתק הכל</button>
         </div>
       </div>
 
@@ -470,10 +545,42 @@
   </div>
 </div>
 
+<!-- Settings modal -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-width:420px">
+    <h3 style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      הגדרות
+    </h3>
+    <p style="margin-bottom:24px">כאן תוכל לכוון את ההגדרות שמשפיעות על יצירת הכתוביות</p>
+
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">מקסימום מילים בכתובית</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">מגביל כמה מילים יכולות להופיע בכל כתובית. ריק = לפי ההיגיון אוטומטי</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="number" id="max-words-modal" min="1" max="30" value="4"
+            style="width:80px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none;text-align:center;transition:border-color .2s"
+            oninput="document.getElementById('max-words').value=this.value"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border2)'"
+          />
+          <span style="font-size:13px;color:var(--muted)">מילים לכל היותר</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-btns" style="margin-top:28px">
+      <button class="btn btn-ghost" onclick="closeModal('settings-modal')">סגור</button>
+      <button class="btn btn-primary" onclick="closeModal('settings-modal');toast('success','הגדרות נשמרו')">שמור</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm reset -->
 <div class="modal-overlay" id="confirm-modal">
   <div class="modal">
-    <h3>⚠️ איפוס הכל?</h3>
+    <h3 style="display:flex;align-items:center;gap:8px"><i data-lucide="alert-triangle" class="lucide lucide-lg" style="stroke:#e85050"></i> איפוס הכל?</h3>
     <p>כל הכתוביות שנוצרו ייעלמו. אם לא הורדת את קובץ ה-SRT - הוא יאבד.</p>
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">ביטול</button>
@@ -485,7 +592,7 @@
 <!-- Burn settings modal -->
 <div class="modal-overlay" id="burn-settings-modal">
   <div class="modal" style="max-width:520px">
-    <h3>🎨 עיצוב כתוביות</h3>
+    <h3><i data-lucide="palette" style="width:14px;height:14px;flex-shrink:0"></i> עיצוב כתוביות</h3>
     <p style="margin-bottom:12px">השינויים יתעדכנו בסרטון בזמן אמת</p>
     <div class="burn-preview" style="margin-bottom:16px">
       <div class="burn-preview-text" id="burn-preview-text">זאת דוגמה לפי ההגדרות שבחרת</div>
@@ -602,19 +709,25 @@ function updateUndoBtn() {
   const btn = document.getElementById('undo-btn');
   btn.style.display = undoStack.length ? 'inline-flex' : 'none';
   if (undoStack.length)
-    btn.textContent = `↩ בטל שינוי${undoStack.length>1?' ('+undoStack.length+')':''}`;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg> בטל שינוי${undoStack.length>1?' ('+undoStack.length+')':''}`;
 }
 function getPlainText() { return state.segments.map(s=>s.text).join('\n'); }
 
 // ── THEME ─────────────────────────────────────────────────────────
-let isLight = false;
+const moonSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+const sunSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+// Default: light mode. Saved preference overrides.
+let isLight = localStorage.getItem('theme') !== 'dark';
+function applyTheme() {
+  document.documentElement.classList.toggle('light', isLight);
+  document.getElementById('theme-btn').innerHTML = isLight ? moonSvg + ' חושך על פני תהום' : sunSvg + ' יהי אור';
+}
 function toggleTheme() {
   isLight = !isLight;
-  document.documentElement.classList.toggle('light', isLight);
-  document.getElementById('theme-btn').innerHTML = isLight ? '🌙 חושך על פני תהום' : '☀️ יהי אור';
+  applyTheme();
   localStorage.setItem('theme', isLight ? 'light' : 'dark');
 }
-if (localStorage.getItem('theme') === 'light') toggleTheme();
+applyTheme();
 // AI powered by Gemini (key stored server-side)
 
 // ── TRANSCRIPT HINT ───────────────────────────────────────────────
@@ -825,6 +938,14 @@ async function uploadFile(file) {
 // ── RENDER ────────────────────────────────────────────────────────
 function showResults() {
   document.getElementById('results-section').style.display='block';
+  document.getElementById('action-row').style.display='flex';
+
+  // Show align btn if transcript was provided
+  const hasTranscript = document.getElementById('transcript-hint').value.trim().length > 0;
+  if (hasTranscript) {
+    document.getElementById('align-btn').style.display='inline-flex';
+    document.getElementById('action-row').style.display='flex';
+  }
   renderSRTList(); syncPlainText();
   document.getElementById('srt-count').textContent=`${state.segments.length} כתוביות`;
   // Load video player
@@ -834,6 +955,7 @@ function showResults() {
     document.getElementById('video-no-file').style.display = 'none';
     document.getElementById('video-wrap').style.display = 'flex';
     document.getElementById('download-row').style.display = 'block';
+    document.getElementById('video-wrap').classList.add('has-video');  // enables hover-show of fs-btn
     setTimeout(applyBurnStylesToOverlay, 100);
   }
 
@@ -1034,6 +1156,29 @@ function showAutosaved(){
   el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500);
 }
 
+// ── FULLSCREEN: custom button on .video-wrap ──────────────────────
+function toggleVideoFullscreen() {
+  const wrap = document.getElementById('video-wrap');
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (!isFs) {
+    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+    if (req) req.call(wrap);
+  } else {
+    const ex = document.exitFullscreen || document.webkitExitFullscreen;
+    if (ex) ex.call(document);
+  }
+}
+// Toggle icon when fullscreen changes
+function onFsChange() {
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const expand   = document.getElementById('fs-icon-expand');
+  const compress = document.getElementById('fs-icon-compress');
+  if (expand)   expand.style.display   = isFs ? 'none'  : 'block';
+  if (compress) compress.style.display = isFs ? 'block' : 'none';
+}
+document.addEventListener('fullscreenchange',       onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
 // ── PERSIST ───────────────────────────────────────────────────────
 async function persistSRT(){
   if (!state.videoId) return;
@@ -1082,9 +1227,7 @@ function startAIProgress(label) {
   document.getElementById('srt-loading-label').textContent = label;
   overlay.classList.add('show');
   // Disable AI buttons
-  ['ai-btn','paste-btn'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.disabled=true;
-  });
+  const pBtn=document.getElementById('paste-btn'); if(pBtn) pBtn.disabled=true;
   let displayed = 0;
   let countdown = 60;
   const tau = 20;
@@ -1108,9 +1251,7 @@ function stopAIProgress() {
   // Unlock editor
   document.getElementById('srt-loading-overlay').classList.remove('show');
   // Re-enable AI buttons
-  ['ai-btn','paste-btn'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.disabled=false;
-  });
+  const pBtnR=document.getElementById('paste-btn'); if(pBtnR) pBtnR.disabled=false;
   setTimeout(() => {
     document.getElementById('ai-progress').style.display = 'none';
     bar.style.width = '5%';
@@ -1124,7 +1265,7 @@ async function autoAiFix() {
   try {
     const res = await fetch(`${API}/ai-fix`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ segments: state.segments }),
+      body: JSON.stringify({ segments: state.segments, video_id: state.videoId || '-' }),
     });
     if (!res.ok) throw new Error('AI fix failed silently');
     const data = await res.json();
@@ -1143,14 +1284,13 @@ async function autoAiFix() {
 }
 
 async function aiFixText(){
-  const btn = document.getElementById('ai-btn');
-  btn.disabled = true; btn.textContent = '⏳ מתקן...';
+  // ai-btn removed from UI; AI fix runs via autoAiFix
   startAIProgress('AI סורק ומתקן שגיאות...');
   try {
     const res = await fetch(`${API}/ai-fix`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ segments: state.segments }),
+      body: JSON.stringify({ segments: state.segments, video_id: state.videoId || '-' }),
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'שגיאה'); }
     const data = await res.json();
@@ -1162,7 +1302,7 @@ async function aiFixText(){
     toast('error', `שגיאה: ${err.message}`);
   } finally {
     stopAIProgress();
-    btn.disabled = false; btn.textContent = '✨ מעבר ותיקון AI';
+    // ai-btn removed
   }
 }
 
@@ -1178,6 +1318,7 @@ ${lines}`;
   navigator.clipboard.writeText(prompt).then(()=>{
     toast('success','הבקשה הועתקה! הדבק ב-Claude.ai וקבל תיקון');
     document.getElementById('paste-btn').style.display='inline-flex';
+    document.getElementById('action-row').style.display='flex';
   }).catch(()=>toast('error','שגיאה בהעתקה'));
 }
 
@@ -1229,7 +1370,7 @@ async function runAlignWithTranscript(transcript) {
     const res = await fetch(`${API}/align-with-transcript`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ segments: state.segments, transcript }),
+      body: JSON.stringify({ segments: state.segments, transcript, video_id: state.videoId || '-' }),
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'שגיאה'); }
     const data = await res.json();
@@ -1547,6 +1688,11 @@ function animateBurnProgress(){
 
 // ── MODALS ────────────────────────────────────────────────────────
 function confirmReset(){ document.getElementById('confirm-modal').classList.add('show'); }
+function openSettingsModal(){
+  // Sync modal value with hidden input
+  document.getElementById('max-words-modal').value = document.getElementById('max-words').value || 4;
+  document.getElementById('settings-modal').classList.add('show');
+}
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click',e=>{ if(e.target===e.currentTarget) el.classList.remove('show'); });
@@ -1572,6 +1718,10 @@ function resetAll(){
   document.getElementById('transcript-area').style.display='none';
   selectMode('file-only');
   document.getElementById('undo-btn').style.display='none';
+  document.getElementById('video-wrap').classList.remove('has-video');
+  document.getElementById('action-row').style.display='none';
+  document.getElementById('align-btn').style.display='none';
+  document.getElementById('paste-btn').style.display='none';
   document.getElementById('paste-btn').style.display='none';
   showProgress(false); setStep(1);
   window.scrollTo({top:0,behavior:'smooth'});
@@ -1582,6 +1732,12 @@ function segDur(seg){ return srtToSec(seg.end)-srtToSec(seg.start); }
 function srtToSec(ts){ try{ const[h,m,r]=ts.split(':');const[s,ms]=r.replace(',','.').split('.');return+h*3600+ +m*60+ +s+(+ms||0)/1000; }catch{return 0;} }
 function secToSrt(s){ const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60),ms=Math.round((s-Math.floor(s))*1000); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`; }
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── LUCIDE ICONS INIT ────────────────────────────────────────────
+function initIcons() {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+initIcons(); // Script is at bottom so DOM is ready
 
 let toastTimer;
 function toast(type,msg){
