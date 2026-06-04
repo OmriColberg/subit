@@ -1159,18 +1159,25 @@ function normalizeTimeInput(el) {
     cascadeForward(idx, newSec);
 
   } else { // field === 'start'
-    const prevEndSec = idx > 0 ? srtToSec(segs[idx - 1].end) : 0;
-    const curEndSec  = srtToSec(seg.end);
-    const dur        = Math.max(curEndSec - srtToSec(seg.start), 0.1);
+    const prevEndSec   = idx > 0 ? srtToSec(segs[idx - 1].end)   : 0;
+    const prevStartSec = idx > 0 ? srtToSec(segs[idx - 1].start) : 0;
+    const curEndSec    = srtToSec(seg.end);
+    const dur          = Math.max(curEndSec - srtToSec(seg.start), 0.1);
 
-    // ── Rule: start cannot overlap with previous subtitle's end ────
-    if (newSec < prevEndSec - 0.001) {
-      seg.start = secToSrt(prevEndSec);
+    // ── Rule: start cannot go before previous subtitle's START ─────
+    if (idx > 0 && newSec < prevStartSec - 0.001) {
+      seg.start = secToSrt(prevStartSec);
       el.value  = formatTimeDisplay(seg.start);
-      toast('error', 'לא ניתן לחפוף עם הכתובית הקודמת');
+      toast('error', 'לא ניתן לחפוף עם תחילת הכתובית הקודמת');
       renderSRTList();
       scheduleAutoSave();
       return;
+    }
+
+    // ── If new start overlaps previous subtitle's END (but not start):
+    //    Shorten previous subtitle's end to match. ───────────────────
+    if (idx > 0 && newSec < prevEndSec - 0.001) {
+      segs[idx - 1].end = srtVal;
     }
 
     seg.start = srtVal;
