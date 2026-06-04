@@ -132,32 +132,37 @@
     .srt-list{max-height:290px;overflow-y:auto}
     .srt-list::-webkit-scrollbar{width:4px}
     .srt-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
-    .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
+    .srt-item{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
     /* Insert row between subtitles */
     /* Number column: flex column, number on top, delete below */
     /* Number column: flex col, number on top, buttons below */
     .srt-num-col{display:flex;flex-direction:column;align-items:center;gap:3px}
     /* Delete button: shown only when is-empty */
+    /* Button area: fixed size, always same space — no layout shift ever */
+    .srt-btn-area{
+      position:relative;
+      width:38px;height:46px;
+      margin-top:auto;flex-shrink:0;
+    }
+    .srt-delete-btn,
+    .srt-insert-after-btn{
+      position:absolute;inset:0;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+      border-radius:6px;font-size:9px;font-weight:700;font-family:var(--font-he);line-height:1;
+      cursor:pointer;
+      visibility:hidden;opacity:0;
+      transition:opacity .12s,background .12s,border-color .12s;
+    }
+    /* Delete: shown when subtitle is empty */
     .srt-delete-btn{
-      display:none;
-      flex-direction:column;align-items:center;justify-content:center;gap:2px;
-      padding:6px 4px;width:30px;border-radius:5px;
-      font-size:9px;font-weight:700;font-family:var(--font-he);line-height:1;
-      background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);
-      color:var(--accent);cursor:pointer;transition:all .15s;
+      background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);color:var(--accent);
     }
     .srt-delete-btn:hover{background:rgba(232,80,80,.25);border-color:var(--accent)}
-    .srt-item.is-empty .srt-delete-btn{display:flex}
+    .srt-item.is-empty .srt-delete-btn{visibility:visible;opacity:1}
     .srt-item.is-empty{border-color:rgba(232,80,80,.25);opacity:.8}
+    /* Insert: shown on hover/focus when NOT empty */
     .srt-insert-after-btn{
-      margin-top:auto;
-      visibility:hidden;opacity:0;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-      padding:6px 4px;width:30px;border-radius:5px;
-      font-size:9px;font-weight:700;font-family:var(--font-he);line-height:1;
-      background:transparent;border:1px solid var(--border2);
-      color:var(--muted);cursor:pointer;
-      transition:opacity .12s,border-color .12s,background .12s;
+      background:transparent;border:1px solid var(--border2);color:var(--muted);
     }
     .srt-insert-after-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,66,66,.06)}
     .srt-item:not(.is-empty):hover .srt-insert-after-btn,
@@ -1012,8 +1017,10 @@ function renderSRTList() {
     <div class="srt-item${isEmpty ? ' is-empty' : ''}" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
       <div class="srt-num-col">
         <div class="srt-num">${seg.index}</div>
-        <button class="srt-delete-btn" data-delete-idx="${i}">${trashSvg}<span>מחק</span></button>
-        <button class="srt-insert-after-btn" data-insert-after="${i}" title="הוסף כתובית אחרי זו">${plusSvg}<span>הוסף</span></button>
+        <div class="srt-btn-area">
+          <button class="srt-delete-btn" data-delete-idx="${i}">${trashSvg}<span>מחק</span></button>
+          <button class="srt-insert-after-btn" data-insert-after="${i}" title="הוסף כתובית אחרי זו">${plusSvg}<span>הוסף</span></button>
+        </div>
       </div>
       <div>
         <div class="srt-time">
