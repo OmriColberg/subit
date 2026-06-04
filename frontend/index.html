@@ -187,7 +187,7 @@
     html.light .srt-item:hover .time-input{background:rgba(0,0,0,.03)}
     .srt-num{font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-top:2px;text-align:center}
     .srt-time{font-family:var(--font-mono);font-size:14px;color:var(--accent);margin-bottom:6px;display:flex;gap:4px;align-items:center}
-    .time-input{background:transparent;border:none;font-family:var(--font-mono);font-size:13px;color:var(--accent);width:82px;outline:none;border-bottom:1px solid transparent;transition:border-color .2s}
+    .time-input{background:transparent;border:none;font-family:var(--font-mono);font-size:13px;color:var(--accent);width:62px;outline:none;border-bottom:1px solid transparent;transition:border-color .2s}
     .time-input:focus{border-bottom-color:var(--accent)}
     .text-input{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--font-he);font-size:15px;resize:none;outline:none;direction:rtl;line-height:1.6}
 
@@ -991,20 +991,29 @@ function showResults() {
 }
 
 function formatTimeDisplay(ts) {
-  // Convert 00:01:01,818 → 00:01:01.8
-  return ts.replace(',', '.').replace(/.([0-9])[0-9]*$/, '.$1');
+  // SRT "HH:MM:SS,mmm" → display "MM:SS.d" (total minutes, no hours)
+  // e.g. "00:01:23,456" → "1:23.4"  |  "01:30:45,200" → "90:45.2"
+  // Work in integer ms to avoid floating-point artifacts (0.2s ≠ 0.19999...)
+  const totalMs  = Math.round(srtToSec(ts) * 1000);
+  const totalSec = Math.floor(totalMs / 1000);
+  const tenths   = Math.floor((totalMs % 1000) / 100);
+  const totalMin = Math.floor(totalSec / 60);
+  const secs     = totalSec % 60;
+  return `${totalMin}:${String(secs).padStart(2,'0')}.${tenths}`;
 }
 
 function parseTimeInput(val) {
-  // Accept 00:01:01.8 → convert back to 00:01:01,800 for storage
-  if (!val.includes(',')) {
-    // Convert dot format to comma format
-    val = val.replace(/\.(\d)$/, '.$10').replace(/\.(\d{2})$/, '.$10');
-    const parts = val.split('.');
-    const ms = (parts[1] || '000').padEnd(3,'0').slice(0,3);
-    val = parts[0] + ',' + ms;
-  }
-  return val;
+  // "MM:SS.d" or "MM:SS,d" → SRT "HH:MM:SS,mmm"
+  // Accepts: "1:23.4"  "90:45"  "90:45.2"  "1:23,456"
+  val = val.trim().replace(',', '.');
+  const m = val.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
+  if (!m) return null;
+  const totalMin = parseInt(m[1], 10);
+  const sec      = parseInt(m[2], 10);
+  const fracStr  = (m[3] || '0').padEnd(3, '0').slice(0, 3);
+  const h        = Math.floor(totalMin / 60);
+  const mins     = totalMin % 60;
+  return `${String(h).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(sec).padStart(2,'0')},${fracStr}`;
 }
 
 function renderSRTList() {
@@ -1099,87 +1108,88 @@ function syncPlainText() {
 // ── CHANGE HANDLERS ───────────────────────────────────────────────
 let autoSaveTimer=null, plainSyncTimer=null;
 
-function normalizeTimeInput(el) {
-  if (el.dataset.field === 'start' || el.dataset.field === 'end') {
-    const idx   = +el.dataset.idx;
-    const field = el.dataset.field;
-    const normalized = parseTimeInput(el.value);
-    const sec = srtToSec(normalized);
-    const seg = state.segments[idx];
-
-    if (field === 'end') {
-      // End must be > start
-      const startSec = srtToSec(seg.start);
-      if (sec <= startSec) {
-        // Reject - revert to previous value
-        el.value = formatTimeDisplay(seg.end);
-        toast('error', 'זמן סיום חייב להיות אחרי זמן התחלה');
-        return;
-      }
-    } else if (field === 'start') {
-      // Start must be < end (after cascade adjustments)
-      const endSec = srtToSec(seg.end);
-      // Allow start > end - applyTimeCascade will fix end
-    }
-
-    state.segments[idx][field] = normalized;
-    el.value = formatTimeDisplay(normalized);
-    applyTimeCascade(idx, field, normalized);
-    scheduleAutoSave();
+// ── TIME EDITING LOGIC ───────────────────────────────────────────
+// cascadeForward: push subtitles idx+1, idx+2, ... forward as needed
+// to eliminate overlaps, preserving each subtitle's duration.
+function cascadeForward(idx, fromSec) {
+  const segs = state.segments;
+  let frontier = fromSec;
+  for (let i = idx + 1; i < segs.length; i++) {
+    const startSec = srtToSec(segs[i].start);
+    if (startSec >= frontier - 0.001) break; // no overlap → done
+    const dur = Math.max(srtToSec(segs[i].end) - startSec, 0.1);
+    segs[i].start = secToSrt(frontier);
+    segs[i].end   = secToSrt(frontier + dur);
+    frontier      = frontier + dur;
   }
 }
 
-function applyTimeCascade(idx, field, newVal) {
+function normalizeTimeInput(el) {
+  const field = el.dataset.field;
+  if (field !== 'start' && field !== 'end') return;
+
+  const idx  = +el.dataset.idx;
   const segs = state.segments;
-  if (field === 'end') {
-    const newEndSec = srtToSec(newVal);
-    // Only cascade forward if moving end LATER
-    // Walk through ALL following subtitles and fix any collision
-    let prevEnd = newEndSec;
-    for (let i = idx + 1; i < segs.length; i++) {
-      const startSec = srtToSec(segs[i].start);
-      const dur      = srtToSec(segs[i].end) - startSec;
-      if (startSec < prevEnd - 0.001) {
-        // Collision - push forward
-        segs[i].start = secToSrt(prevEnd);
-        segs[i].end   = secToSrt(prevEnd + dur);
-        prevEnd = prevEnd + dur;
-      } else {
-        break; // No more collisions in chain
-      }
-    }
-    renderSRTList();
-  } else if (field === 'start') {
-    const newStartSec = srtToSec(newVal);
-    // If start moves before previous subtitle's end → shorten previous subtitle's end
-    if (idx > 0) {
-      const prevEndSec = srtToSec(segs[idx-1].end);
-      if (newStartSec < prevEndSec) {
-        segs[idx-1].end = secToSrt(newStartSec);
-      }
-    }
-    // If start moves past end → push end forward, keep duration
-    const origStart = srtToSec(segs[idx].start);
-    const origEnd   = srtToSec(segs[idx].end);
-    const dur       = Math.max(origEnd - origStart, 1);
-    if (newStartSec >= origEnd) {
-      const newEnd = newStartSec + dur;
-      segs[idx].end = secToSrt(newEnd);
-      // Now cascade from this subtitle's new end
-      let prevEnd = newEnd;
-      for (let i = idx + 1; i < segs.length; i++) {
-        const s = srtToSec(segs[i].start);
-        const d = srtToSec(segs[i].end) - s;
-        if (s < prevEnd - 0.001) {
-          segs[i].start = secToSrt(prevEnd);
-          segs[i].end   = secToSrt(prevEnd + d);
-          prevEnd = prevEnd + d;
-        } else break;
-      }
-    }
-    // If start didn't pass end - nothing to cascade, END unchanged
-    renderSRTList();
+  const seg  = segs[idx];
+
+  // Parse input → SRT string
+  const srtVal = parseTimeInput(el.value);
+  if (!srtVal) {
+    el.value = formatTimeDisplay(seg[field]);
+    toast('error', 'פורמט זמן לא תקין — השתמש ב-MM:SS.d');
+    return;
   }
+  const newSec = srtToSec(srtVal);
+
+  if (field === 'end') {
+    const startSec = srtToSec(seg.start);
+
+    // ── Rule: end must be > start + 0.1s ──────────────────────────
+    if (newSec <= startSec + 0.1) {
+      seg.end  = secToSrt(startSec + 0.1);
+      el.value = formatTimeDisplay(seg.end);
+      toast('error', 'זמן סיום חייב להיות אחרי זמן התחלה');
+      renderSRTList();
+      scheduleAutoSave();
+      return;
+    }
+
+    // Apply, then cascade forward if overlapping next subtitle
+    seg.end = srtVal;
+    cascadeForward(idx, newSec);
+
+  } else { // field === 'start'
+    const prevEndSec = idx > 0 ? srtToSec(segs[idx - 1].end) : 0;
+    const curEndSec  = srtToSec(seg.end);
+    const dur        = Math.max(curEndSec - srtToSec(seg.start), 0.1);
+
+    // ── Rule: start cannot overlap with previous subtitle's end ────
+    if (newSec < prevEndSec - 0.001) {
+      seg.start = secToSrt(prevEndSec);
+      el.value  = formatTimeDisplay(seg.start);
+      toast('error', 'לא ניתן לחפוף עם הכתובית הקודמת');
+      renderSRTList();
+      scheduleAutoSave();
+      return;
+    }
+
+    seg.start = srtVal;
+
+    if (newSec < curEndSec) {
+      // ── Moving start forward but before current end:
+      //    Just shorten the subtitle (end stays). ─────────────────
+    } else {
+      // ── Moving start past current end:
+      //    Preserve duration, compute new end, cascade if needed. ──
+      const newEndSec = newSec + dur;
+      seg.end = secToSrt(newEndSec);
+      cascadeForward(idx, newEndSec);
+    }
+  }
+
+  el.value = formatTimeDisplay(seg[field]);
+  renderSRTList();
+  scheduleAutoSave();
 }
 
 function onSegChange(el) {
