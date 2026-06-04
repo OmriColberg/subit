@@ -140,27 +140,24 @@
     /* Delete button: shown only when is-empty */
     .srt-delete-btn{
       display:none;
-      padding:4px 8px;border-radius:5px;
-      font-size:10px;font-weight:700;font-family:var(--font-he);
+      flex-direction:column;align-items:center;justify-content:center;gap:2px;
+      padding:6px 4px;width:30px;border-radius:5px;
+      font-size:9px;font-weight:700;font-family:var(--font-he);line-height:1;
       background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);
-      color:var(--accent);cursor:pointer;transition:all .15s;white-space:nowrap;
-      align-items:center;gap:2px;
+      color:var(--accent);cursor:pointer;transition:all .15s;
     }
     .srt-delete-btn:hover{background:rgba(232,80,80,.25);border-color:var(--accent)}
     .srt-item.is-empty .srt-delete-btn{display:flex}
     .srt-item.is-empty{border-color:rgba(232,80,80,.25);opacity:.8}
-    /* Insert-after button: in num-col, always in layout (visibility) — no layout shift!
-       margin-top:auto pushes to bottom of the col without adding height */
     .srt-insert-after-btn{
       margin-top:auto;
       visibility:hidden;opacity:0;
-      display:flex;align-items:center;justify-content:center;gap:2px;
-      padding:4px 6px;border-radius:5px;
-      font-size:10px;font-weight:700;font-family:var(--font-he);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+      padding:6px 4px;width:30px;border-radius:5px;
+      font-size:9px;font-weight:700;font-family:var(--font-he);line-height:1;
       background:transparent;border:1px solid var(--border2);
       color:var(--muted);cursor:pointer;
-      transition:opacity .12s, border-color .12s, background .12s;
-      white-space:nowrap;
+      transition:opacity .12s,border-color .12s,background .12s;
     }
     .srt-insert-after-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,66,66,.06)}
     .srt-item:not(.is-empty):hover .srt-insert-after-btn,
@@ -966,6 +963,7 @@ async function uploadFile(file) {
 
 // ── RENDER ────────────────────────────────────────────────────────
 function showResults() {
+  undoStack.length = 0;  // clean slate for new results
   document.getElementById('results-section').style.display='block';
   document.getElementById('action-row').style.display='flex';
 
@@ -1014,8 +1012,8 @@ function renderSRTList() {
     <div class="srt-item${isEmpty ? ' is-empty' : ''}" onclick="seekToSubtitleIfNotFocused(event,${i})" style="cursor:pointer">
       <div class="srt-num-col">
         <div class="srt-num">${seg.index}</div>
-        <button class="srt-delete-btn" data-delete-idx="${i}">${trashSvg} מחק</button>
-        <button class="srt-insert-after-btn" data-insert-after="${i}" title="הוסף כתובית אחרי זו">${plusSvg}</button>
+        <button class="srt-delete-btn" data-delete-idx="${i}">${trashSvg}<span>מחק</span></button>
+        <button class="srt-insert-after-btn" data-insert-after="${i}" title="הוסף כתובית אחרי זו">${plusSvg}<span>הוסף</span></button>
       </div>
       <div>
         <div class="srt-time">
@@ -1053,11 +1051,16 @@ function insertSegmentAfter(i) {
   const segs = state.segments;
   const curr = segs[i];
   const next = segs[i + 1];
-  // Times are in seconds; add 2s gap if last segment
-  const gapStart = curr.end;
-  const gapEnd   = next ? next.start : curr.end + 2;
-  const mid      = Math.round(((gapStart + gapEnd) / 2) * 100) / 100;
-  segs.splice(i + 1, 0, { index: 0, start: gapStart, end: mid, text: '' });
+  // Times stored as SRT strings → convert to seconds for math
+  const startSec = srtToSec(curr.end);
+  const endSec   = next ? srtToSec(next.start) : startSec + 2;
+  const midSec   = (startSec + endSec) / 2;
+  segs.splice(i + 1, 0, {
+    index: 0,
+    start: curr.end,           // new subtitle starts where prev ends
+    end:   secToSrt(midSec),   // ends at midpoint of the gap
+    text:  ''
+  });
   reindexSegments();
   renderSRTList(); syncPlainText(); persistSRT();
   setTimeout(() => {
@@ -1359,6 +1362,8 @@ async function autoAiFix() {
     const data = await res.json();
     // No pushUndo for auto AI fix - not a user action
     state.segments = data.segments;
+    undoStack.length = 0;  // auto-fix is not undoable
+    updateUndoBtn();
     renderSRTList(); syncPlainText(); await persistSRT();
 
     toast('success', `תמלול הושלם ותוקן - ${state.segments.length} כתוביות`);
@@ -1533,6 +1538,7 @@ let activeSrtIdx = null;
 
 
 function seekToSubtitleIfNotFocused(e, idx) {
+  if (e.target.closest('[data-insert-after],[data-delete-idx]')) return;
   if (activeSrtIdx === idx) return;
   activeSrtIdx = idx;
   const seg    = state.segments[idx];
