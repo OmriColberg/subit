@@ -135,29 +135,36 @@
     .srt-item{display:grid;grid-template-columns:32px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
     /* Insert row between subtitles */
     /* Number column: flex column, number on top, delete below */
-    .srt-num-col{display:flex;flex-direction:column;align-items:center;gap:4px}
-    /* Delete button: in number col, shown only when empty */
+    /* Number column: flex col, number on top, buttons below */
+    .srt-num-col{display:flex;flex-direction:column;align-items:center;gap:3px}
+    /* Delete button: shown only when is-empty */
     .srt-delete-btn{
-      display:none;padding:3px 5px;border-radius:5px;font-size:10px;font-weight:700;
-      font-family:var(--font-he);background:rgba(232,80,80,.12);
-      border:1px solid rgba(232,80,80,.35);color:var(--accent);
-      cursor:pointer;transition:all .15s;white-space:nowrap;
+      display:none;
+      padding:4px 8px;border-radius:5px;
+      font-size:10px;font-weight:700;font-family:var(--font-he);
+      background:rgba(232,80,80,.12);border:1px solid rgba(232,80,80,.35);
+      color:var(--accent);cursor:pointer;transition:all .15s;white-space:nowrap;
+      align-items:center;gap:2px;
     }
     .srt-delete-btn:hover{background:rgba(232,80,80,.25);border-color:var(--accent)}
-    .srt-item.is-empty .srt-delete-btn{display:flex;align-items:center;gap:3px}
+    .srt-item.is-empty .srt-delete-btn{display:flex}
     .srt-item.is-empty{border-color:rgba(232,80,80,.25);opacity:.8}
-    /* Insert-after button: inside item, shown on hover/focus-within — works on mobile too */
+    /* Insert-after button: in num-col, always in layout (visibility) — no layout shift!
+       margin-top:auto pushes to bottom of the col without adding height */
     .srt-insert-after-btn{
-      display:none;margin-top:6px;width:100%;
-      padding:4px 0;border-radius:6px;font-size:10px;font-weight:700;
-      font-family:var(--font-he);background:transparent;
-      border:1px dashed var(--border2);color:var(--muted);
-      cursor:pointer;transition:all .15s;
-      align-items:center;justify-content:center;gap:4px;
+      margin-top:auto;
+      visibility:hidden;opacity:0;
+      display:flex;align-items:center;justify-content:center;gap:2px;
+      padding:4px 6px;border-radius:5px;
+      font-size:10px;font-weight:700;font-family:var(--font-he);
+      background:transparent;border:1px solid var(--border2);
+      color:var(--muted);cursor:pointer;
+      transition:opacity .12s, border-color .12s, background .12s;
+      white-space:nowrap;
     }
-    .srt-insert-after-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,66,66,.05)}
-    .srt-item:hover .srt-insert-after-btn,
-    .srt-item:focus-within .srt-insert-after-btn{display:flex}
+    .srt-insert-after-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,66,66,.06)}
+    .srt-item:not(.is-empty):hover .srt-insert-after-btn,
+    .srt-item:not(.is-empty):focus-within .srt-insert-after-btn{visibility:visible;opacity:1}
     .srt-item{position:relative}
     .srt-item:hover{border-color:var(--border2)}.srt-item:focus-within{border-color:var(--accent)}.srt-item.active-sub{border-color:var(--accent)!important;background:rgba(245,66,66,.07)}
     /* Edit hint badge */
@@ -1000,6 +1007,7 @@ function parseTimeInput(val) {
 function renderSRTList() {
   const trashSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>';
   const plusSvg  = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+  const cntEl = document.getElementById('srt-count'); if(cntEl) cntEl.textContent = `${state.segments.length} כתוביות`;
   document.getElementById('srt-list').innerHTML = state.segments.map((seg, i) => {
     const isEmpty = !seg.text.trim();
     return `
@@ -1007,6 +1015,7 @@ function renderSRTList() {
       <div class="srt-num-col">
         <div class="srt-num">${seg.index}</div>
         <button class="srt-delete-btn" data-delete-idx="${i}">${trashSvg} מחק</button>
+        <button class="srt-insert-after-btn" data-insert-after="${i}" title="הוסף כתובית אחרי זו">${plusSvg}</button>
       </div>
       <div>
         <div class="srt-time">
@@ -1018,7 +1027,6 @@ function renderSRTList() {
           oninput="onSegChange(this);this.closest('.srt-item').classList.toggle('is-empty',!this.value.trim())"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){this.blur();event.preventDefault()}"
         >${seg.text}</textarea>
-        <button class="srt-insert-after-btn" data-insert-after="${i}">${plusSvg} הוסף כתובית אחרי</button>
       </div>
     </div>`;
   }).join('');
@@ -1374,7 +1382,6 @@ async function aiFixText(){
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'שגיאה'); }
     const data = await res.json();
-    pushUndo();
     state.segments = data.segments;
     renderSRTList(); syncPlainText(); await persistSRT(); loadSubtitleTrack();
     toast('success', 'AI תיקן את הכתוביות ✨');
@@ -1454,7 +1461,6 @@ async function runAlignWithTranscript(transcript) {
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'שגיאה'); }
     const data = await res.json();
-    pushUndo();
     state.segments = data.segments;
     renderSRTList(); syncPlainText(); await persistSRT(); loadSubtitleTrack();
     toast('success', 'הכתוביות עודכנו לפי הטקסט שסיפקת ✨');
