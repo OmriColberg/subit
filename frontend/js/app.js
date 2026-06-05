@@ -472,12 +472,10 @@ function normalizeTimeInput(el) {
     const dur          = Math.max(curEndSec - srtToSec(seg.start), 0.1);
 
     // ── Rule: start cannot go before previous subtitle's START ─────
+    //    Reject the edit entirely — revert the input, change nothing.
     if (idx > 0 && newSec < prevStartSec - 0.001) {
-      seg.start = secToSrt(prevStartSec);
-      el.value  = formatTimeDisplay(seg.start);
+      el.value = formatTimeDisplay(seg.start);  // restore original, no change
       toast('error', 'לא ניתן לחפוף עם תחילת הכתובית הקודמת');
-      renderSRTList();
-      scheduleAutoSave();
       return;
     }
 
