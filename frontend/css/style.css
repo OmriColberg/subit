@@ -269,12 +269,13 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
    even for portrait/vertical videos (which pillarbox inside .video-wrap) */
 .video-inner{
   position:relative;display:inline-flex;
-  max-height:min(440px,65vh);
+  max-width:100%;
+  max-height:max(460px,60vh);
 }
 .video-inner video{
   display:block;
-  max-height:min(440px,65vh);
-  max-width:100%;width:auto;height:auto;
+  max-width:100%;max-height:max(460px,60vh);
+  width:auto;height:auto;
   outline:none;
 }
 .video-sub-overlay{
