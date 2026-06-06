@@ -262,9 +262,21 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
 .video-wrap{
   position:relative;background:#000;border-radius:10px;
   overflow:hidden;margin-bottom:8px;
-  max-height:320px;display:flex;align-items:center;justify-content:center;
+  display:flex;align-items:center;justify-content:center;
 }
-.video-wrap video{ width:100%;max-height:320px;display:block;outline:none; }
+/* Inner wrapper shrinks to the video's real rendered size, so the
+   subtitle overlay (positioned against it) never exceeds the video,
+   even for portrait/vertical videos (which pillarbox inside .video-wrap) */
+.video-inner{
+  position:relative;display:inline-flex;
+  max-height:min(440px,65vh);
+}
+.video-inner video{
+  display:block;
+  max-height:min(440px,65vh);
+  max-width:100%;width:auto;height:auto;
+  outline:none;
+}
 .video-sub-overlay{
   position:absolute;left:50%;transform:translateX(-50%);
   width:92%;text-align:center;pointer-events:none;
@@ -292,12 +304,16 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
 .video-wrap:fullscreen,
 .video-wrap:-webkit-full-screen,
 .video-wrap:-moz-full-screen{
-  max-height:100vh;width:100vw;max-width:100vw;
+  width:100vw;max-width:100vw;height:100vh;max-height:100vh;
   background:#000;display:flex;align-items:center;justify-content:center;
+}
+.video-wrap:fullscreen .video-inner,
+.video-wrap:-webkit-full-screen .video-inner{
+  max-height:100vh;max-width:100vw;
 }
 .video-wrap:fullscreen video,
 .video-wrap:-webkit-full-screen video{
-  max-height:100vh;width:100%;object-fit:contain;
+  max-height:100vh;max-width:100vw;width:auto;height:auto;object-fit:contain;
 }
 .video-wrap:fullscreen .video-sub-overlay,
 .video-wrap:-webkit-full-screen .video-sub-overlay{
