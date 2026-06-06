@@ -312,24 +312,23 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
   width:100vw;max-width:100vw;height:100vh;max-height:100vh;
   background:#000;display:flex;align-items:center;justify-content:center;
 }
-/* Portrait fullscreen (works great): inner shrinks to video, overlay tracks it */
+/* Default (landscape) fullscreen — exactly the original: video fills width */
 .video-wrap:fullscreen .video-inner,
 .video-wrap:-webkit-full-screen .video-inner{
-  max-height:100vh;max-width:100vw;
+  width:100%;
 }
 .video-wrap:fullscreen video,
 .video-wrap:-webkit-full-screen video{
-  max-height:100vh;max-width:100vw;width:auto;height:auto;object-fit:contain;
+  width:100%;max-height:100vh;object-fit:contain;
 }
-/* Landscape fullscreen: fill the screen width (don't stay at intrinsic size).
-   Overrides the generic rule above via higher specificity (.is-landscape). */
-.video-wrap.is-landscape:fullscreen .video-inner,
-.video-wrap.is-landscape:-webkit-full-screen .video-inner{
-  width:100vw;max-width:100vw;max-height:100vh;
+/* Portrait fullscreen override: inner shrinks to video, overlay tracks it */
+.video-wrap.is-portrait:fullscreen .video-inner,
+.video-wrap.is-portrait:-webkit-full-screen .video-inner{
+  width:auto;max-width:100vw;max-height:100vh;
 }
-.video-wrap.is-landscape:fullscreen video,
-.video-wrap.is-landscape:-webkit-full-screen video{
-  width:100%;height:auto;max-height:100vh;object-fit:contain;
+.video-wrap.is-portrait:fullscreen video,
+.video-wrap.is-portrait:-webkit-full-screen video{
+  width:auto;height:auto;max-width:100vw;max-height:100vh;object-fit:contain;
 }
 .video-wrap:fullscreen .video-sub-overlay,
 .video-wrap:-webkit-full-screen .video-sub-overlay{

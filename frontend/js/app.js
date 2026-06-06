@@ -292,12 +292,12 @@ function showResults() {
     document.getElementById('video-wrap').style.display = 'flex';
     document.getElementById('download-row').style.display = 'block';
     document.getElementById('video-wrap').classList.add('has-video');  // enables hover-show of fs-btn
-    // Detect orientation → landscape fills width, portrait keeps aspect (pillarbox)
+    // Detect orientation → portrait gets special handling; landscape stays
+    // class-less so it behaves exactly like the original layout.
     player.addEventListener('loadedmetadata', () => {
       const wrap = document.getElementById('video-wrap');
       const isPortrait = player.videoHeight > player.videoWidth;
       wrap.classList.toggle('is-portrait', isPortrait);
-      wrap.classList.toggle('is-landscape', !isPortrait);
     }, { once: true });
     setTimeout(applyBurnStylesToOverlay, 100);
   }
@@ -1133,6 +1133,7 @@ function resetAll(){
   selectMode('file-only');
   document.getElementById('undo-btn').style.display='none';
   document.getElementById('video-wrap').classList.remove('has-video');
+  document.getElementById('video-wrap').classList.remove('is-portrait');
   document.getElementById('action-row').style.display='none';
 
   document.getElementById('paste-btn').style.display='none';
