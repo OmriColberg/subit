@@ -270,13 +270,23 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
 .video-inner{
   position:relative;display:inline-flex;
   max-width:100%;
-  max-height:max(460px,60vh);
 }
 .video-inner video{
-  display:block;
-  max-width:100%;max-height:max(460px,60vh);
+  display:block;outline:none;
+}
+/* Landscape: fill the full container width (like the original layout) */
+.video-wrap.is-landscape .video-inner{ width:100%; }
+.video-wrap.is-landscape video{ width:100%;height:auto; }
+/* Portrait: keep aspect ratio, cap height — pillarbox inside the wrap.
+   .video-inner shrinks to the video so the overlay tracks it exactly. */
+.video-wrap.is-portrait .video-inner{ max-height:max(460px,60vh); }
+.video-wrap.is-portrait video{
   width:auto;height:auto;
-  outline:none;
+  max-width:100%;max-height:max(460px,60vh);
+}
+/* Fallback before orientation is known: cap height, keep aspect */
+.video-wrap:not(.is-landscape):not(.is-portrait) video{
+  width:auto;height:auto;max-width:100%;max-height:max(460px,60vh);
 }
 .video-sub-overlay{
   position:absolute;left:50%;transform:translateX(-50%);

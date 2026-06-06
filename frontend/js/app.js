@@ -292,6 +292,13 @@ function showResults() {
     document.getElementById('video-wrap').style.display = 'flex';
     document.getElementById('download-row').style.display = 'block';
     document.getElementById('video-wrap').classList.add('has-video');  // enables hover-show of fs-btn
+    // Detect orientation → landscape fills width, portrait keeps aspect (pillarbox)
+    player.addEventListener('loadedmetadata', () => {
+      const wrap = document.getElementById('video-wrap');
+      const isPortrait = player.videoHeight > player.videoWidth;
+      wrap.classList.toggle('is-portrait', isPortrait);
+      wrap.classList.toggle('is-landscape', !isPortrait);
+    }, { once: true });
     setTimeout(applyBurnStylesToOverlay, 100);
   }
 
