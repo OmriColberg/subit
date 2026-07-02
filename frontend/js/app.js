@@ -244,26 +244,30 @@ async function uploadFile(file) {
     const res = await fetch(`${API}/transcribe`,{method:'POST',body:form});
     if (!res.ok){const e=await res.json().catch(()=>({detail:res.statusText}));throw new Error(e.detail);}
     const data = await res.json();
-    animateProgress(85,100,400); await sleep(400);
-    stopTimer();
+animateProgress(85,92,400); await sleep(400);
     uploadAbortController = null;
     const clearBtnOk = document.querySelector('[onclick="clearFileSelection()"]');
     if (clearBtnOk) clearBtnOk.disabled = false;
     state.videoId  = data.video_id;
     state.filename = data.filename;
     state.segments = data.segments;
+
+    if (hint) {
+      showProgress(true, 'מעדכן לפי הטקסט שסיפקת...');
+      animateProgressSlow(92, 98);
+      await runAlignWithTranscript(hint, true);
+    } else {
+      showProgress(true, 'משפר דיוק כתוביות...');
+      animateProgressSlow(92, 98);
+      await autoAiFix(true);
+    }
+
+    animateProgress(98,100,300); await sleep(300);
+    stopTimer();
     showProgress(false);
     document.getElementById('estimate-box').style.display='none';
     showResults();
     setStep(3);
-
-    if (hint) {
-      toast('info', 'תמלול הושלם - מעדכן לפי הטקסט שסיפקת...');
-      await runAlignWithTranscript(hint);
-    } else {
-      // Auto AI fix
-      await autoAiFix();
-    }
   } catch(err){
     stopTimer(); showProgress(false); setStep(1);
     document.getElementById('start-section').style.display = 'block';
@@ -684,10 +688,11 @@ function stopAIProgress() {
   }, 600);
 }
 
-async function autoAiFix() {
+async function autoAiFix(silent = false) {
   // Runs automatically after transcription - silent, shows status
-
-  startAIProgress('משפר דיוק כתוביות...');
+  // silent=true: called as part of the unified upload progress bar
+  //   (uploadFile manages its own progress UI, so skip the separate overlay)
+  if (!silent) startAIProgress('משפר דיוק כתוביות...');
   try {
     const res = await fetch(`${API}/ai-fix`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -695,19 +700,15 @@ async function autoAiFix() {
     });
     if (!res.ok) throw new Error('AI fix failed silently');
     const data = await res.json();
-    // No pushUndo for auto AI fix - not a user action
     state.segments = data.segments;
-    undoStack.length = 0;  // auto-fix is not undoable
+    undoStack.length = 0;
     updateUndoBtn();
     renderSRTList(); syncPlainText(); await persistSRT();
-
     toast('success', `תמלול הושלם ותוקן - ${state.segments.length} כתוביות`);
   } catch(err) {
-    // Silent fail - just show transcription success
-
     toast('success', `תמלול הושלם - ${state.segments.length} כתוביות`);
   } finally {
-    stopAIProgress();
+    if (!silent) stopAIProgress();
   }
 }
 
@@ -789,10 +790,10 @@ function applyPastedCorrection(){
 }
 
 // ── ALIGN WITH TRANSCRIPT (called automatically after transcription) ──
-async function runAlignWithTranscript(transcript) {
+async function runAlignWithTranscript(transcript, silent = false) {
   if (!transcript) transcript = document.getElementById('transcript-hint').value.trim();
   if (!transcript) { toast('error', 'לא נמצא טקסט'); return; }
-  startAIProgress('מעדכן כתוביות לפי הטקסט שסיפקת...');
+  if (!silent) startAIProgress('מעדכן כתוביות לפי הטקסט שסיפקת...');
   try {
     const res = await fetch(`${API}/align-with-transcript`, {
       method: 'POST',
@@ -807,7 +808,7 @@ async function runAlignWithTranscript(transcript) {
   } catch(err) {
     toast('error', err.message);
   } finally {
-    stopAIProgress();
+    if (!silent) stopAIProgress();
   }
 }
 
