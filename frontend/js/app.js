@@ -361,7 +361,8 @@ function renderSRTList() {
         >${seg.text}</textarea>
       </div>
     </div>`;
-  }).join('');
+}).join('');
+  refreshVideoTrack();  // keep the video's WebVTT cues in sync with every edit
 }
 
 // ── INSERT / DELETE — event delegation on srt-list ──────────────
@@ -521,12 +522,20 @@ function onSegChange(el) {
   editSessionTimer = setTimeout(() => { inEditSession = false; }, 2000);
   const field = el.dataset.field;
   const idx = +el.dataset.idx;
-  if (field === 'text') {
+if (field === 'text') {
     state.segments[idx][field] = el.value;
     syncPlainText();
     scheduleAutoSave();
+    scheduleTrackRefresh();  // text edits don't re-render the list, so refresh cues here
   }
   // Time fields: only save on blur via normalizeTimeInput, NOT here
+}
+
+// Debounced - rebuilding the VTT blob on every keystroke would be wasteful
+let _trackRefreshTimer = null;
+function scheduleTrackRefresh() {
+  clearTimeout(_trackRefreshTimer);
+  _trackRefreshTimer = setTimeout(refreshVideoTrack, 400);
 }
 
 function onPlainTextChange() {
@@ -842,19 +851,51 @@ function setActiveSubtitle(idx) {
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 }
+// The video's visible subtitles are now drawn by the browser from a WebVTT
+// <track>. This handler only keeps the EDITOR list highlight in sync.
 function syncOverlaySubtitle() {
   const video = document.getElementById('video-player');
-  const overlay = document.getElementById('video-sub-overlay');
-  if (!video || !overlay || !state.segments.length) return;
-  const t = video.currentTime;
-  const t2 = Math.round(t * 10) / 10; // round to 0.1s for better matching
+  if (!video || !state.segments.length) return;
+  const t2 = Math.round(video.currentTime * 10) / 10;
   const segIdx = state.segments.findIndex(s => t2 >= srtToSec(s.start) && t2 <= srtToSec(s.end) + 0.05);
-  overlay.textContent = segIdx >= 0 ? state.segments[segIdx].text : '';
+  if (segIdx !== _lastActiveIdx) setActiveSubtitle(segIdx);
+}
 
-  // Highlight active subtitle
-  if (segIdx !== _lastActiveIdx) {
-    setActiveSubtitle(segIdx);
-  }
+// ── WEBVTT TRACK (replaces the old overlay div) ───────────────────
+let _vttBlobUrl = null;
+
+function buildVTT() {
+  const pos = document.getElementById('burn-position')?.value || 'bottom';
+  const lineMap = {
+    'very-bottom':'96%', 'bottom':'88%', 'center-bottom':'72%',
+    'center':'50%', 'center-top':'30%', 'top':'12%', 'very-top':'5%',
+  };
+  const line = lineMap[pos] || lineMap['bottom'];
+
+  let vtt = 'WEBVTT\n\n';
+  state.segments.forEach((s, i) => {
+    const text = (s.text || '').trim();
+    if (!text) return;                       // skip empty cues
+    const start = s.start.replace(',', '.'); // SRT uses comma, VTT uses dot
+    const end   = s.end.replace(',', '.');
+    vtt += `${i + 1}\n${start} --> ${end} line:${line} align:center\n${text}\n\n`;
+  });
+  return vtt;
+}
+
+function refreshVideoTrack() {
+  const video = document.getElementById('video-player');
+  const track = document.getElementById('video-track');
+  if (!video || !track) return;
+
+  if (_vttBlobUrl) URL.revokeObjectURL(_vttBlobUrl);
+  _vttBlobUrl = URL.createObjectURL(new Blob([buildVTT()], { type: 'text/vtt' }));
+  track.src = _vttBlobUrl;
+
+  // Setting .src reloads the track and resets its mode - force it back on.
+  const show = () => { if (video.textTracks[0]) video.textTracks[0].mode = 'showing'; };
+  track.addEventListener('load', show, { once: true });
+  setTimeout(show, 0);
 }
 
 // Track which srt-item index is currently "active" (was previously clicked)
@@ -893,47 +934,43 @@ function scheduleApplyStyles() {
   _applyStylesTimer = setTimeout(applyBurnStylesToOverlay, 150);
 }
 
+// Styles the browser-rendered WebVTT cues via a ::cue rule.
+// NOTE: position is NOT set here - it lives in the VTT "line:" setting, so a
+// position change requires rebuilding the track (hence refreshVideoTrack below).
 function applyBurnStylesToOverlay() {
-  const overlay = document.getElementById('video-sub-overlay');
-  if (!overlay) return;
-
-  const font = document.getElementById('burn-font')?.value || 'Arial';
-  const color = document.getElementById('burn-color')?.value || 'white';
+  const font    = document.getElementById('burn-font')?.value || 'Arial';
+  const color   = document.getElementById('burn-color')?.value || 'white';
   const outline = document.getElementById('burn-outline')?.value || 'none';
-  const size = parseInt(document.getElementById('burn-fontsize')?.value || 24);
-  const style = document.getElementById('burn-style')?.value || 'normal';
-  const pos = document.getElementById('burn-position')?.value || 'bottom';
-  const bgOp = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+  const size    = parseInt(document.getElementById('burn-fontsize')?.value || 24);
+  const style   = document.getElementById('burn-style')?.value || 'normal';
+  const bgOp    = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
 
-  const colorMap = { white: '#fff', yellow: '#ff0', black: '#000', cyan: '#0ff', lime: '#0f8', red: '#f44', orange: '#f90', pink: '#f8c' };
+  const colorMap = {white:'#fff',yellow:'#ff0',black:'#000',cyan:'#0ff',lime:'#0f8',red:'#f44',orange:'#f90',pink:'#f8c'};
   const txtColor = colorMap[color] || '#fff';
 
-  let shadow = '';
-  if (outline === 'black') shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
-  else if (outline === 'white') shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
+  let shadow = 'none';
+  if (outline === 'black')            shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
+  else if (outline === 'white')       shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
   else if (outline === 'dark-shadow') shadow = '3px 4px 8px rgba(0,0,0,.9)';
 
-  overlay.style.fontFamily = font + ',sans-serif';
-  overlay.style.color = txtColor;
-  overlay.style.textShadow = shadow;
-  overlay.style.fontSize = size + 'px';
-  overlay.style.fontWeight = style.includes('bold') ? '700' : '400';
-  overlay.style.fontStyle = style.includes('italic') ? 'italic' : 'normal';
-  overlay.style.background = bgOp > 0 ? `rgba(0,0,0,${bgOp / 100})` : 'transparent';
-  overlay.style.borderRadius = bgOp > 0 ? '4px' : '0';
-  overlay.style.padding = bgOp > 0 ? '4px 12px' : '0';
+  let styleEl = document.getElementById('cue-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'cue-style';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    #video-player::cue {
+      font-family: ${font}, sans-serif;
+      color: ${txtColor};
+      font-size: ${size}px;
+      font-weight: ${style.includes('bold') ? '700' : '400'};
+      font-style: ${style.includes('italic') ? 'italic' : 'normal'};
+      text-shadow: ${shadow};
+      background: ${bgOp > 0 ? `rgba(0,0,0,${bgOp/100})` : 'transparent'};
+    }`;
 
-  // Position
-  overlay.style.top = overlay.style.bottom = overlay.style.transform = '';
-  const posMap = {
-    'very-bottom': { bottom: '4px' }, 'bottom': { bottom: '18px' }, 'center-bottom': { bottom: '28%' },
-    'center': { top: '50%', transform: 'translate(-50%,-50%)' },
-    'center-top': { top: '28%' }, 'top': { top: '18px' }, 'very-top': { top: '4px' },
-  };
-  overlay.style.left = '50%';
-  const pm = posMap[pos] || posMap['bottom'];
-  if (!pm.transform) overlay.style.transform = 'translateX(-50%)';
-  Object.entries(pm).forEach(([k, v]) => overlay.style[k] = v);
+  refreshVideoTrack();  // position lives in the cues themselves
 }
 
 function resetBurnDefaults() {
@@ -1126,8 +1163,9 @@ function resetAll() {
   // Reset video player
   const player = document.getElementById('video-player');
   if (player) { player.src = ''; player.load(); }
-  const ov = document.getElementById('video-sub-overlay'); if (ov) ov.textContent = '';
-  document.getElementById('video-wrap').style.display = 'none';
+  const tr = document.getElementById('video-track');
+  if (tr) tr.removeAttribute('src');
+  if (_vttBlobUrl) { URL.revokeObjectURL(_vttBlobUrl); _vttBlobUrl = null; }  document.getElementById('video-wrap').style.display = 'none';
   document.getElementById('video-no-file').style.display = 'block';
   if (state.videoBlobUrl) { URL.revokeObjectURL(state.videoBlobUrl); state.videoBlobUrl = null; }
   document.getElementById('file-input').value = '';
