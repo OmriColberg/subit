@@ -293,7 +293,7 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
 /* Browser-rendered WebVTT cues (replaces the old .video-sub-overlay div).
    These are defaults; applyBurnStylesToOverlay() overrides them at runtime. */
 #video-player::cue{
-  font-size:22px;font-weight:600;line-height:1.4;
+  font-size:3.2vh;font-weight:600;line-height:1.4;
   color:#fff;background:transparent;
   text-shadow:2px 2px 3px #000,-1px -1px 2px #000;
 }
@@ -337,10 +337,6 @@ html.light .srt-loading-overlay{background:rgba(245,245,240,.75)}
 .video-wrap.is-portrait:fullscreen video,
 .video-wrap.is-portrait:-webkit-full-screen video{
   width:auto;height:auto;max-width:100vw;max-height:100vh;object-fit:contain;
-}
-.video-wrap:fullscreen #video-player::cue,
-.video-wrap:-webkit-full-screen #video-player::cue{
-  font-size:32px;
 }
 
 /* Lucide icon sizing */

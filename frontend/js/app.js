@@ -963,7 +963,7 @@ function applyBurnStylesToOverlay() {
     #video-player::cue {
       font-family: ${font}, sans-serif;
       color: ${txtColor};
-      font-size: ${size}px;
+      font-size: ${(size / 24 * 3.2).toFixed(2)}vh;
       font-weight: ${style.includes('bold') ? '700' : '400'};
       font-style: ${style.includes('italic') ? 'italic' : 'normal'};
       text-shadow: ${shadow};
