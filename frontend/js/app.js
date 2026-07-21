@@ -375,7 +375,7 @@ function renderSRTList() {
         >${seg.text}</textarea>
       </div>
     </div>`;
-}).join('');
+  }).join('');
   refreshVideoTrack();  // keep the video's WebVTT cues in sync with every edit
 }
 
@@ -536,7 +536,7 @@ function onSegChange(el) {
   editSessionTimer = setTimeout(() => { inEditSession = false; }, 2000);
   const field = el.dataset.field;
   const idx = +el.dataset.idx;
-if (field === 'text') {
+  if (field === 'text') {
     state.segments[idx][field] = el.value;
     syncPlainText();
     scheduleAutoSave();
@@ -611,9 +611,9 @@ function showAutosaved() {
 
 // ── FULLSCREEN: custom button on .video-wrap ──────────────────────
 function toggleVideoFullscreen() {
-  const wrap  = document.getElementById('video-wrap');
+  const wrap = document.getElementById('video-wrap');
   const video = document.getElementById('video-player');
-  const isFs  = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
 
   // Path 1: real Fullscreen API (desktop, Android, iPad) - fullscreen the
   // wrapper so our custom controls + ::cue styling stay intact.
@@ -892,8 +892,8 @@ let _vttBlobUrl = null;
 function buildVTT() {
   const pos = document.getElementById('burn-position')?.value || 'bottom';
   const lineMap = {
-    'very-bottom':'96%', 'bottom':'88%', 'center-bottom':'72%',
-    'center':'50%', 'center-top':'30%', 'top':'12%', 'very-top':'5%',
+    'very-bottom': '96%', 'bottom': '88%', 'center-bottom': '72%',
+    'center': '50%', 'center-top': '30%', 'top': '12%', 'very-top': '5%',
   };
   const line = lineMap[pos] || lineMap['bottom'];
 
@@ -902,7 +902,7 @@ function buildVTT() {
     const text = (s.text || '').trim();
     if (!text) return;                       // skip empty cues
     const start = s.start.replace(',', '.'); // SRT uses comma, VTT uses dot
-    const end   = s.end.replace(',', '.');
+    const end = s.end.replace(',', '.');
     vtt += `${i + 1}\n${start} --> ${end} line:${line} align:center\n${text}\n\n`;
   });
   return vtt;
@@ -963,19 +963,19 @@ function scheduleApplyStyles() {
 // NOTE: position is NOT set here - it lives in the VTT "line:" setting, so a
 // position change requires rebuilding the track (hence refreshVideoTrack below).
 function applyBurnStylesToOverlay() {
-  const font    = document.getElementById('burn-font')?.value || 'Arial';
-  const color   = document.getElementById('burn-color')?.value || 'white';
+  const font = document.getElementById('burn-font')?.value || 'Arial';
+  const color = document.getElementById('burn-color')?.value || 'white';
   const outline = document.getElementById('burn-outline')?.value || 'none';
-  const size    = parseInt(document.getElementById('burn-fontsize')?.value || 24);
-  const style   = document.getElementById('burn-style')?.value || 'normal';
-  const bgOp    = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+  const size = parseInt(document.getElementById('burn-fontsize')?.value || 24);
+  const style = document.getElementById('burn-style')?.value || 'normal';
+  const bgOp = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
 
-  const colorMap = {white:'#fff',yellow:'#ff0',black:'#000',cyan:'#0ff',lime:'#0f8',red:'#f44',orange:'#f90',pink:'#f8c'};
+  const colorMap = { white: '#fff', yellow: '#ff0', black: '#000', cyan: '#0ff', lime: '#0f8', red: '#f44', orange: '#f90', pink: '#f8c' };
   const txtColor = colorMap[color] || '#fff';
 
   let shadow = 'none';
-  if (outline === 'black')            shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
-  else if (outline === 'white')       shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
+  if (outline === 'black') shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
+  else if (outline === 'white') shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
   else if (outline === 'dark-shadow') shadow = '3px 4px 8px rgba(0,0,0,.9)';
 
   let styleEl = document.getElementById('cue-style');
@@ -992,7 +992,7 @@ function applyBurnStylesToOverlay() {
       font-weight: ${style.includes('bold') ? '700' : '400'};
       font-style: ${style.includes('italic') ? 'italic' : 'normal'};
       text-shadow: ${shadow};
-      background: ${bgOp > 0 ? `rgba(0,0,0,${bgOp/100})` : 'transparent'};
+      background: ${bgOp > 0 ? `rgba(0,0,0,${bgOp / 100})` : 'transparent'};
     }`;
 
   refreshVideoTrack();  // position lives in the cues themselves
@@ -1190,7 +1190,7 @@ function resetAll() {
   if (player) { player.src = ''; player.load(); }
   const tr = document.getElementById('video-track');
   if (tr) tr.removeAttribute('src');
-  if (_vttBlobUrl) { URL.revokeObjectURL(_vttBlobUrl); _vttBlobUrl = null; }  document.getElementById('video-wrap').style.display = 'none';
+  if (_vttBlobUrl) { URL.revokeObjectURL(_vttBlobUrl); _vttBlobUrl = null; } document.getElementById('video-wrap').style.display = 'none';
   document.getElementById('video-no-file').style.display = 'block';
   if (state.videoBlobUrl) { URL.revokeObjectURL(state.videoBlobUrl); state.videoBlobUrl = null; }
   document.getElementById('file-input').value = '';
