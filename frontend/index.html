@@ -1,481 +1,426 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Subit - מחולל כתוביות בעברית</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap"
-    rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.383.0/dist/umd/lucide.min.js"></script>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css"/>
 </head>
-
 <body>
-  <div class="page">
+<div class="page">
 
-    <header>
-      <div class="logo">
-        <div class="logo-icon"><i data-lucide="film" class="lucide"></i></div>
-        <div>
-          <h1><span>Subit</span></h1>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">מחולל כתוביות בעברית</div>
+  <header>
+    <div class="logo">
+      <div class="logo-icon"><i data-lucide="film" class="lucide"></i></div>
+      <div>
+        <h1><span>Subit</span></h1>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">מחולל כתוביות בעברית</div>
+      </div>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">יהי אור</button>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="step-1"><div class="step-num">1</div>העלאת קובץ</div>
+    <div class="step" id="step-2"><div class="step-num">2</div>תמלול</div>
+    <div class="step" id="step-3"><div class="step-num">3</div>עריכה והורדה</div>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card" id="upload-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">העלאת קובץ וידאו או אודיו</div>
+      <button class="settings-gear-btn" onclick="openSettingsModal()" style="font-size:12px;padding:5px 10px;font-weight:500">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        הגדרות
+      </button>
+    </div>
+
+    <!-- Mode selector -->
+    <div class="mode-selector" id="mode-selector">
+      <button class="mode-btn active" id="mode-file-only" onclick="selectMode('file-only')">
+        <span class="mode-icon"><i data-lucide="video" style="width:28px;height:28px;stroke:var(--muted)"></i></span>
+        <span class="mode-title">יש לי קובץ וידאו/אודיו</span>
+        <span class="mode-sub">ניצור כתוביות אוטומטיות</span>
+      </button>
+      <button class="mode-btn" id="mode-with-text" onclick="selectMode('with-text')">
+        <span class="mode-icon"><i data-lucide="file-text" style="width:28px;height:28px;stroke:#60a5fa"></i></span>
+        <span class="mode-title">יש לי גם טקסט מוכן</span>
+        <span class="mode-sub" style="color:#60a5fa;font-weight:600">כתוביות מדויקות יותר ✨</span>
+      </button>
+    </div>
+
+    <!-- Transcript textarea (shown in with-text mode) -->
+    <div id="transcript-area" style="display:none;margin-bottom:16px">
+      <textarea class="transcript-hint-area" id="transcript-hint"
+        placeholder="הדבק כאן את הטקסט המלא של הסרטון..."
+        style="min-height:120px;font-size:15px"></textarea>
+    </div>
+
+
+    <!-- Hidden max-words input (still used in JS) -->
+    <input type="number" id="max-words" value="4" style="display:none"/>
+
+    <!-- Drop zone (hidden after file picked) -->
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <input type="file" id="file-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg"/>
+      <span class="upload-icon-wrap"><i data-lucide="upload-cloud" style="width:52px;height:52px;stroke:var(--muted);stroke-width:1.5"></i></span>
+      <div class="upload-title">העלה קובץ ותקבל כתוביות בעברית תוך דקות</div>
+      <div class="upload-sub">MP4, MOV, AVI, MKV, WebM, MP3, WAV, M4A</div>
+      <button class="btn btn-primary" type="button"
+        onclick="event.stopPropagation();document.getElementById('file-input').click()">
+        צור כתוביות
+      </button>
+    </div>
+
+    <!-- File selected state (shown instead of drop zone) -->
+    <div id="file-selected-state" style="display:none;padding:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;text-align:center">
+      <div style="margin-bottom:10px;display:flex;justify-content:center"><i data-lucide="file-video" style="width:40px;height:40px;stroke:var(--accent);stroke-width:1.5"></i></div>
+      <div id="selected-filename" style="font-size:16px;font-weight:600;margin-bottom:4px;word-break:break-all"></div>
+      <div id="selected-filesize" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="confirmClearFile()"><i data-lucide="x" class="lucide"></i> בחר קובץ אחר</button>
+    </div>
+
+    <!-- Estimate box - appears after file selection -->
+    <div class="estimate-box" id="estimate-box">
+      <div class="estimate-row">
+        <span class="estimate-label">גודל קובץ</span>
+        <span class="estimate-value" id="est-size">-</span>
+      </div>
+      <div class="estimate-row">
+        <span class="estimate-label">אורך הסרטון</span>
+        <span class="estimate-value" id="est-duration">-</span>
+      </div>
+      <div class="estimate-row">
+        <span class="estimate-label">זמן עיבוד משוער</span>
+        <span class="estimate-value" id="est-time">-</span>
+      </div>
+      <!-- Start button (before transcription) -->
+      <div id="start-section" style="margin-top:16px">
+        <button class="btn btn-primary" id="start-btn" onclick="startTranscription()"
+          style="width:100%;justify-content:center;padding:14px 20px;font-size:16px;font-weight:700">
+          <i data-lucide="wand-2" class="lucide lucide-lg"></i> צור לי כתוביות
+        </button>
+
+      </div>
+      <!-- Timer -->
+      <div id="timer-section" style="display:none">
+        <div class="timer-display" id="timer-display">0%</div>
+        <div class="timer-sub" style="display:flex;align-items:center;justify-content:center;gap:6px">
+          <i data-lucide="flame" class="lucide flame-icon" style="stroke:#f59e0b"></i> הכתוביות על האש...
         </div>
-      </div>
-      <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">יהי אור</button>
-    </header>
-
-    <div class="steps">
-      <div class="step active" id="step-1">
-        <div class="step-num">1</div>העלאת קובץ
-      </div>
-      <div class="step" id="step-2">
-        <div class="step-num">2</div>תמלול
-      </div>
-      <div class="step" id="step-3">
-        <div class="step-num">3</div>עריכה והורדה
       </div>
     </div>
 
-    <!-- Upload card -->
-    <div class="card" id="upload-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="card-title" style="margin-bottom:0">העלאת קובץ וידאו או אודיו</div>
-        <button class="settings-gear-btn" onclick="openSettingsModal()"
-          style="font-size:12px;padding:5px 10px;font-weight:500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path
-              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          הגדרות
-        </button>
+    <div id="progress-section">
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
       </div>
-
-      <!-- Mode selector -->
-      <div class="mode-selector" id="mode-selector">
-        <button class="mode-btn active" id="mode-file-only" onclick="selectMode('file-only')">
-          <span class="mode-icon"><i data-lucide="video" style="width:28px;height:28px;stroke:var(--muted)"></i></span>
-          <span class="mode-title">יש לי קובץ וידאו/אודיו</span>
-          <span class="mode-sub">ניצור כתוביות אוטומטיות</span>
-        </button>
-        <button class="mode-btn" id="mode-with-text" onclick="selectMode('with-text')">
-          <span class="mode-icon"><i data-lucide="file-text" style="width:28px;height:28px;stroke:#60a5fa"></i></span>
-          <span class="mode-title">יש לי גם טקסט מוכן</span>
-          <span class="mode-sub" style="color:#60a5fa;font-weight:600">כתוביות מדויקות יותר ✨</span>
-        </button>
+      <div class="progress-status">
+        <div class="dot"></div>
+        <span id="progress-label">מעלה קובץ...</span>
       </div>
+    </div>
+  </div>
 
-      <!-- Transcript textarea (shown in with-text mode) -->
-      <div id="transcript-area" style="display:none;margin-bottom:16px">
-        <textarea class="transcript-hint-area" id="transcript-hint" placeholder="הדבק כאן את הטקסט המלא של הסרטון..."
-          style="min-height:120px;font-size:15px"></textarea>
+  <!-- Results -->
+  <div id="results-section">
+    <!-- סטטוס + קובץ חדש -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <div id="autosave-indicator"><div class="saved-dot"></div><span>נשמר</span></div>
+    </div>
+    <!-- AI progress (shown during AI fix/align) -->
+    <div id="ai-progress" style="display:none;margin-bottom:16px">
+      <div class="progress-wrap">
+        <div class="progress-bar" id="ai-progress-bar" style="width:5%"></div>
       </div>
-
-
-      <!-- Hidden max-words input (still used in JS) -->
-      <input type="number" id="max-words" value="4" style="display:none" />
-
-      <!-- Drop zone (hidden after file picked) -->
-      <div id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <input type="file" id="file-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg" />
-        <span class="upload-icon-wrap"><i data-lucide="upload-cloud"
-            style="width:52px;height:52px;stroke:var(--muted);stroke-width:1.5"></i></span>
-        <div class="upload-title">העלה קובץ ותקבל כתוביות בעברית תוך דקות</div>
-        <div class="upload-sub">MP4, MOV, AVI, MKV, WebM, MP3, WAV, M4A</div>
-        <button class="btn btn-primary" type="button"
-          onclick="event.stopPropagation();document.getElementById('file-input').click()">
-          צור כתוביות
-        </button>
-      </div>
-
-      <!-- File selected state (shown instead of drop zone) -->
-      <div id="file-selected-state"
-        style="display:none;padding:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;text-align:center">
-        <div style="margin-bottom:10px;display:flex;justify-content:center"><i data-lucide="file-video"
-            style="width:40px;height:40px;stroke:var(--accent);stroke-width:1.5"></i></div>
-        <div id="selected-filename" style="font-size:16px;font-weight:600;margin-bottom:4px;word-break:break-all"></div>
-        <div id="selected-filesize" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
-        <button class="btn btn-ghost btn-sm" onclick="confirmClearFile()"><i data-lucide="x" class="lucide"></i> בחר
-          קובץ אחר</button>
-      </div>
-
-      <!-- Estimate box - appears after file selection -->
-      <div class="estimate-box" id="estimate-box">
-        <div class="estimate-row">
-          <span class="estimate-label">גודל קובץ</span>
-          <span class="estimate-value" id="est-size">-</span>
-        </div>
-        <div class="estimate-row">
-          <span class="estimate-label">אורך הסרטון</span>
-          <span class="estimate-value" id="est-duration">-</span>
-        </div>
-        <div class="estimate-row">
-          <span class="estimate-label">זמן עיבוד משוער</span>
-          <span class="estimate-value" id="est-time">-</span>
-        </div>
-        <!-- Start button (before transcription) -->
-        <div id="start-section" style="margin-top:16px">
-          <button class="btn btn-primary" id="start-btn" onclick="startTranscription()"
-            style="width:100%;justify-content:center;padding:14px 20px;font-size:16px;font-weight:700">
-            <i data-lucide="wand-2" class="lucide lucide-lg"></i> צור לי כתוביות
-          </button>
-
-        </div>
-        <!-- Timer -->
-        <div id="timer-section" style="display:none">
-          <div class="timer-display" id="timer-display">0%</div>
-          <div class="timer-sub" style="display:flex;align-items:center;justify-content:center;gap:6px">
-            <i data-lucide="flame" class="lucide flame-icon" style="stroke:#f59e0b"></i> הכתוביות על האש...
-          </div>
-        </div>
-      </div>
-
-      <div id="progress-section">
-        <div class="progress-wrap">
-          <div class="progress-bar" id="progress-bar" style="width:0%"></div>
-        </div>
-        <div class="progress-status">
+      <div class="progress-status" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
           <div class="dot"></div>
-          <span id="progress-label">מעלה קובץ...</span>
+          <span id="ai-progress-label">שולח ל-AI...</span>
         </div>
+        <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--accent)" id="ai-timer-display">0%</span>
       </div>
     </div>
 
-    <!-- Results -->
-    <div id="results-section">
-      <!-- סטטוס + קובץ חדש -->
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-        <div id="autosave-indicator">
-          <div class="saved-dot"></div><span>נשמר</span>
-        </div>
-      </div>
-      <!-- AI progress (shown during AI fix/align) -->
-      <div id="ai-progress" style="display:none;margin-bottom:16px">
-        <div class="progress-wrap">
-          <div class="progress-bar" id="ai-progress-bar" style="width:5%"></div>
-        </div>
-        <div class="progress-status" style="justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="dot"></div>
-            <span id="ai-progress-label">שולח ל-AI...</span>
-          </div>
-          <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--accent)"
-            id="ai-timer-display">0%</span>
-        </div>
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('editor')"><i data-lucide="edit-3" class="lucide"></i> עורך כתוביות</button>
+        <button class="tab" onclick="switchTab('text')"><i data-lucide="align-left" class="lucide"></i> טקסט גולמי לעריכה</button>
       </div>
 
-      <div class="card">
-        <div class="tabs">
-          <button class="tab active" onclick="switchTab('editor')"><i data-lucide="edit-3" class="lucide"></i> עורך
-            כתוביות</button>
-          <button class="tab" onclick="switchTab('text')"><i data-lucide="align-left" class="lucide"></i> טקסט גולמי
-            לעריכה</button>
+      <div class="tab-content active" id="tab-editor">
+        <!-- Video player -->
+        <div id="video-no-file" class="video-no-file">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><i data-lucide="monitor-play" style="width:36px;height:36px;stroke:var(--muted);stroke-width:1.5"></i><span>הוידאו יופיע כאן לאחר העלאה — תוכל לצפות בכתוביות בזמן אמת</span></div>
+        </div>
+        <div class="video-wrap" id="video-wrap" style="display:none">
+          <div class="video-inner" id="video-inner">
+<video id="video-player" controls controlsList="nodownload nofullscreen" preload="metadata"
+            playsinline webkit-playsinline
+            ontimeupdate="syncOverlaySubtitle()">
+            <track id="video-track" kind="subtitles" srclang="he" label="עברית" default>
+          </video>
+          <button class="fs-btn" id="fs-btn" onclick="toggleVideoFullscreen()" title="מסך מלא">
+            <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            <svg id="fs-icon-compress" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+          </button>
+          </div>
         </div>
 
-        <div class="tab-content active" id="tab-editor">
-          <!-- Video player -->
-          <div id="video-no-file" class="video-no-file">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><i data-lucide="monitor-play"
-                style="width:36px;height:36px;stroke:var(--muted);stroke-width:1.5"></i><span>הוידאו יופיע כאן לאחר
-                העלאה — תוכל לצפות בכתוביות בזמן אמת</span></div>
-          </div>
-          <div class="video-wrap" id="video-wrap" style="display:none">
-            <div class="video-inner" id="video-inner">
-              <video id="video-player" controls controlsList="nodownload nofullscreen" preload="metadata" playsinline
-                webkit-playsinline ontimeupdate="syncOverlaySubtitle()">
-                <track id="video-track" kind="subtitles" srclang="he" label="עברית" default>
-              </video>
-              <button class="fs-btn" id="fs-btn" onclick="toggleVideoFullscreen()" title="מסך מלא">
-                <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                  <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                  <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                </svg>
-                <svg id="fs-icon-compress" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  style="display:none">
-                  <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                  <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                  <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                  <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Download buttons below video -->
-          <div id="download-row" style="display:none;margin-bottom:4px">
-            <button class="btn btn-primary" id="burn-btn" disabled title="פיצ'ר זה יופעל בעדכון הבא של השרת" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:700;
+        <!-- Download buttons below video -->
+        <div id="download-row" style="display:none;margin-bottom:4px">
+          <button class="btn btn-primary" id="burn-btn" disabled
+            title="פיצ'ר זה יופעל בעדכון הבא של השרת"
+            style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:700;
             opacity:0.45;cursor:not-allowed;position:relative">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                style="flex-shrink:0">
-                <path
-                  d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z" />
-                <path d="M6 18h12" />
-                <path d="M6 14h12" />
-                <rect width="2" height="4" x="11" y="14" />
-              </svg>
-              הורד סרטון עם כתוביות
-              <span style="position:absolute;top:-1px;left:-1px;font-size:9px;font-weight:800;
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z"/><path d="M6 18h12"/><path d="M6 14h12"/><rect width="2" height="4" x="11" y="14"/></svg>
+            הורד סרטון עם כתוביות
+            <span style="position:absolute;top:-1px;left:-1px;font-size:9px;font-weight:800;
               background:#3b82f6;color:#fff;padding:2px 6px;border-radius:4px 0 4px 0;
               letter-spacing:.5px;text-transform:uppercase">בקרוב</span>
-            </button>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button onclick="downloadSRT()" style="flex:1;justify-content:center;font-size:12px;font-weight:700;
+          </button>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button onclick="downloadSRT()"
+              style="flex:1;justify-content:center;font-size:12px;font-weight:700;
               display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;
               cursor:pointer;font-family:var(--font-he);transition:all .2s;
               background:var(--accent);color:#fff;border:none;
-              box-shadow:0 2px 8px rgba(232,80,80,.3)" onmouseover="this.style.opacity='.85'"
-                onmouseout="this.style.opacity='1'">
-                <i data-lucide="download" style="width:14px;height:14px;flex-shrink:0"></i>
-                הורד SRT
-              </button>
-              <button onclick="openBurnSettings()" style="flex:1;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;
+              box-shadow:0 2px 8px rgba(232,80,80,.3)"
+              onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <i data-lucide="download" style="width:14px;height:14px;flex-shrink:0"></i>
+              הורד SRT
+            </button>
+            <button onclick="openBurnSettings()"
+              style="flex:1;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;
               background:var(--surface2);border:1px solid var(--border2);
               cursor:pointer;font-family:var(--font-he);color:var(--text);
               display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s"
-                onmouseover="this.style.borderColor='var(--accent)'"
-                onmouseout="this.style.borderColor='var(--border2)'">
-                <i data-lucide="palette" style="width:14px;height:14px;flex-shrink:0"></i> עיצוב כתוביות
-              </button>
-            </div>
-            <div id="burn-progress" style="display:none;margin-top:10px">
-              <div class="progress-wrap">
-                <div class="progress-bar" id="burn-bar" style="width:30%"></div>
-              </div>
-              <div class="progress-status">
-                <div class="dot"></div><span>צורב כתוביות לסרטון...</span>
-              </div>
-            </div>
-          </div>
-          <div class="action-row" id="action-row" style="display:none">
-
-
-            <button class="btn btn-ghost btn-sm" id="paste-btn" onclick="pasteFromClaude()" style="display:none">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-              </svg>
-              הדבק תיקון
+              onmouseover="this.style.borderColor='var(--accent)'"
+              onmouseout="this.style.borderColor='var(--border2)'">
+              <i data-lucide="palette" style="width:14px;height:14px;flex-shrink:0"></i> עיצוב כתוביות
             </button>
-
           </div>
-          <div class="srt-toolbar">
-            <span class="srt-count" id="srt-count"></span>
-            <div class="view-toggle" title="סגנון תצוגה">
-              <button class="view-toggle-btn" id="view-btn-cards" onclick="setEditorView('cards')"
-                title="תצוגת חלוניות">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="8" rx="2" />
-                  <rect x="3" y="13" width="18" height="8" rx="2" />
-                </svg>
-              </button>
-              <button class="view-toggle-btn" id="view-btn-rows" onclick="setEditorView('rows')"
-                title="תצוגת שורות (timeline)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
+          <div id="burn-progress" style="display:none;margin-top:10px">
+            <div class="progress-wrap"><div class="progress-bar" id="burn-bar" style="width:30%"></div></div>
+            <div class="progress-status"><div class="dot"></div><span>צורב כתוביות לסרטון...</span></div>
+          </div>
+        </div>
+        <div class="action-row" id="action-row" style="display:none">
+
+
+          <button class="btn btn-ghost btn-sm" id="paste-btn" onclick="pasteFromClaude()" style="display:none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+            הדבק תיקון
+          </button>
+
+        </div>
+<div class="srt-toolbar">
+          <span class="srt-count" id="srt-count"></span>
+          <div class="view-toggle" title="סגנון תצוגה">
+            <button class="view-toggle-btn" id="view-btn-cards" onclick="setEditorView('cards')" title="תצוגת חלוניות">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/></svg>
+            </button>
+            <button class="view-toggle-btn" id="view-btn-rows" onclick="setEditorView('rows')" title="תצוגת שורות">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <button class="view-toggle-btn" id="view-btn-timeline" onclick="setEditorView('timeline')" title="ציר זמן (עריכה על הסרטון)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><line x1="7" y1="7" x2="7" y2="17"/><line x1="17" y1="7" x2="17" y2="17"/></svg>
+            </button>
+          </div>
+          <span style="font-size:11px;color:var(--muted)">            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            לחץ על כתובית לעריכה | לחיצה ראשונה = קפיצה בסרטון
+          </span>
+          <button class="btn btn-undo btn-sm" onclick="undoChange()" id="undo-btn" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg> בטל שינוי</button>
+        </div>
+        <div class="srt-list-wrap">
+          <div class="srt-loading-overlay" id="srt-loading-overlay">
+            <div class="spinner"></div>
+            <span id="srt-loading-label">AI עובד...</span>
+          </div>
+          <div class="srt-list" id="srt-list"></div>
+        </div>
+
+        <!-- Timeline view: video filmstrip + subtitles positioned on a RTL time axis -->
+        <div id="timeline-view" style="display:none">
+          <div class="tl-controls">
+            <button class="tl-zoom-btn" onclick="tlZoom(1/1.5)" title="הקטן">−</button>
+            <button class="tl-zoom-btn" onclick="tlZoom(1.5)" title="הגדל">+</button>
+            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | לחיצה על הרצועה = קפיצה</span>
+          </div>
+          <div class="tl-scroll" id="tl-scroll">
+            <div class="tl-inner" id="tl-inner">
+              <div class="tl-ruler" id="tl-ruler"></div>
+              <div class="tl-subs" id="tl-subs"></div>
+              <div class="tl-film" id="tl-film"></div>
+              <div class="tl-playhead" id="tl-playhead"></div>
             </div>
-            <span style="font-size:11px;color:var(--muted)"> <svg xmlns="http://www.w3.org/2000/svg" width="11"
-                height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle">
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-              </svg>
-              לחץ על כתובית לעריכה | לחיצה ראשונה = קפיצה בסרטון
-            </span>
-            <button class="btn btn-undo btn-sm" onclick="undoChange()" id="undo-btn" style="display:none"><svg
-                xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 14L4 9l5-5" />
-                <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-              </svg> בטל שינוי</button>
           </div>
-          <div class="srt-list-wrap">
-            <div class="srt-loading-overlay" id="srt-loading-overlay">
-              <div class="spinner"></div>
-              <span id="srt-loading-label">AI עובד...</span>
-            </div>
-            <div class="srt-list" id="srt-list"></div>
-          </div>
-        </div>
-
-        <div class="tab-content" id="tab-text">
-          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
-            עריכה כאן מסתנכרנת לכתוביות. שורה חדשה = כתובית חדשה (אם מספר השורות תואם).
-          </p>
-          <textarea id="plain-text-area" spellcheck="false" oninput="onPlainTextChange()"></textarea>
-          <div style="margin-top:12px">
-            <button class="btn btn-ghost btn-sm" onclick="copyText()"><i data-lucide="copy" class="lucide"></i> העתק
-              הכל</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-  </div>
-
-  <!-- Settings modal -->
-  <div class="modal-overlay" id="settings-modal">
-    <div class="modal" style="max-width:420px">
-      <h3 style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-        הגדרות
-      </h3>
-      <p style="margin-bottom:24px">כאן תוכל לכוון את ההגדרות שמשפיעות על יצירת הכתוביות</p>
-
-      <div style="display:flex;flex-direction:column;gap:20px">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">מקסימום מילים בכתובית</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">מגביל כמה מילים יכולות
-            להופיע בכל כתובית. ריק = לפי ההיגיון אוטומטי</div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <input type="number" id="max-words-modal" min="1" max="30" value="4"
-              style="width:80px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none;text-align:center;transition:border-color .2s"
-              oninput="document.getElementById('max-words').value=this.value"
-              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'" />
-            <span style="font-size:13px;color:var(--muted)">מילים לכל היותר</span>
+          <div class="tl-editor" id="tl-editor" style="display:none">
+            <span class="tl-editor-num" id="tl-editor-num"></span>
+            <input class="time-input" id="tl-edit-start" title="התחלה" onblur="tlEditorTimeChanged('start')" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
+            <span style="color:var(--muted)">←</span>
+            <input class="time-input" id="tl-edit-end" title="סיום" onblur="tlEditorTimeChanged('end')" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
+            <input class="tl-edit-text" id="tl-edit-text" placeholder="טקסט הכתובית" oninput="tlEditorTextChanged()"/>
           </div>
         </div>
       </div>
 
-      <div class="modal-btns" style="margin-top:28px">
-        <button class="btn btn-ghost" onclick="closeModal('settings-modal')">סגור</button>
-        <button class="btn btn-primary"
-          onclick="closeModal('settings-modal');toast('success','הגדרות נשמרו')">שמור</button>
+      <div class="tab-content" id="tab-text">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+          עריכה כאן מסתנכרנת לכתוביות. שורה חדשה = כתובית חדשה (אם מספר השורות תואם).
+        </p>
+        <textarea id="plain-text-area" spellcheck="false" oninput="onPlainTextChange()"></textarea>
+        <div style="margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="copyText()"><i data-lucide="copy" class="lucide"></i> העתק הכל</button>
+        </div>
+      </div>
+
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Confirm reset -->
-  <div class="modal-overlay" id="confirm-modal">
-    <div class="modal">
-      <h3 style="display:flex;align-items:center;gap:8px"><i data-lucide="alert-triangle" class="lucide lucide-lg"
-          style="stroke:#e85050"></i> איפוס הכל?</h3>
-      <p>כל הכתוביות שנוצרו ייעלמו. אם לא הורדת את קובץ ה-SRT - הוא יאבד.</p>
-      <div class="modal-btns">
-        <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">ביטול</button>
-        <button class="btn" style="background:var(--danger);color:#fff" onclick="resetAll()">כן, אפס</button>
+<!-- Settings modal -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-width:420px">
+    <h3 style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      הגדרות
+    </h3>
+    <p style="margin-bottom:24px">כאן תוכל לכוון את ההגדרות שמשפיעות על יצירת הכתוביות</p>
+
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">מקסימום מילים בכתובית</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">מגביל כמה מילים יכולות להופיע בכל כתובית. ריק = לפי ההיגיון אוטומטי</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="number" id="max-words-modal" min="1" max="30" value="4"
+            style="width:80px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font-mono);font-size:15px;outline:none;text-align:center;transition:border-color .2s"
+            oninput="document.getElementById('max-words').value=this.value"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border2)'"
+          />
+          <span style="font-size:13px;color:var(--muted)">מילים לכל היותר</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Burn settings modal -->
-  <div class="modal-overlay" id="burn-settings-modal">
-    <div class="modal" style="max-width:520px">
-      <h3><i data-lucide="palette" style="width:14px;height:14px;flex-shrink:0"></i> עיצוב כתוביות</h3>
-      <p style="margin-bottom:12px">השינויים יתעדכנו בסרטון בזמן אמת</p>
-      <div class="burn-preview" style="margin-bottom:16px">
-        <div class="burn-preview-text" id="burn-preview-text">זאת דוגמה לפי ההגדרות שבחרת</div>
-      </div>
-      <div class="burn-grid" style="margin-top:0">
-        <div class="form-group">
-          <label class="form-label">פונט</label>
-          <select class="form-control" id="burn-font" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
-            <option>Arial</option>
-            <option>David</option>
-            <option>Tahoma</option>
-            <option>Times New Roman</option>
-            <option>Courier New</option>
-            <option>Georgia</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">מיקום בסרטון</label>
-          <select class="form-control" id="burn-position" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
-            <option value="very-bottom">תחתית - צמוד</option>
-            <option value="bottom" selected>תחתית - רגיל</option>
-            <option value="center-bottom">מרכז - תחתון</option>
-            <option value="center">מרכז</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">צבע טקסט</label>
-          <select class="form-control" id="burn-color" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
-            <option value="white">⬜ לבן</option>
-            <option value="yellow">💛 צהוב</option>
-            <option value="black">⬛ שחור</option>
-            <option value="cyan">🩵 תכלת</option>
-            <option value="lime">💚 ירוק בהיר</option>
-            <option value="red">❤️ אדום</option>
-            <option value="orange">🟠 כתום</option>
-            <option value="pink">🩷 ורוד</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">צבע מסגרת / צל</label>
-          <select class="form-control" id="burn-outline" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
-            <option value="none" selected>ללא</option>
-            <option value="black">שחור</option>
-            <option value="white">לבן</option>
-            <option value="dark-shadow">צל כהה</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">גודל פונט: <span id="font-size-val">16</span>px</label>
-          <input type="range" min="14" max="56" value="16" id="burn-fontsize"
-            oninput="document.getElementById('font-size-val').textContent=this.value;updateBurnPreview();scheduleApplyStyles()" />
-          <div class="range-label"><span>14</span><span>56</span></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">סגנון טקסט</label>
-          <select class="form-control" id="burn-style" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
-            <option value="normal">רגיל</option>
-            <option value="bold">מודגש</option>
-            <option value="italic">נטוי</option>
-            <option value="bold-italic">מודגש + נטוי</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group" style="margin:4px 0 20px">
-        <label class="form-label">שקיפות רקע: <span id="bg-opacity-val">0</span>%</label>
-        <input type="range" min="0" max="80" value="0" id="burn-bg-opacity"
-          oninput="document.getElementById('bg-opacity-val').textContent=this.value;updateBurnPreview();scheduleApplyStyles()" />
-        <div class="range-label"><span>ללא רקע</span><span>רקע כהה</span></div>
-      </div>
-      <div class="modal-btns">
-        <button class="btn btn-ghost" onclick="resetBurnDefaults()">↩ חזור לברירת מחדל</button>
-        <button class="btn btn-primary" onclick="closeModal('burn-settings-modal')">סגור</button>
-      </div>
+    <div class="modal-btns" style="margin-top:28px">
+      <button class="btn btn-ghost" onclick="closeModal('settings-modal')">סגור</button>
+      <button class="btn btn-primary" onclick="closeModal('settings-modal');toast('success','הגדרות נשמרו')">שמור</button>
     </div>
   </div>
+</div>
 
-  <!-- Paste correction modal -->
-  <div class="modal-overlay" id="paste-modal">
-    <div class="modal">
-      <h3>📥 הדבק את התיקון מ-Claude</h3>
-      <p>הדבק כאן את התשובה שקיבלת. פורמט: "1. טקסט" שורה לכל כתובית.</p>
-      <textarea class="modal-input" id="paste-area" rows="10" style="height:200px;font-size:14px"
-        placeholder="1. הטקסט המתוקן&#10;2. שורה שנייה&#10;3. ..."></textarea>
-      <div class="modal-btns">
-        <button class="btn btn-ghost" onclick="closeModal('paste-modal')">ביטול</button>
-        <button class="btn btn-primary" onclick="applyPastedCorrection()">החל תיקון</button>
-      </div>
+<!-- Confirm reset -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <h3 style="display:flex;align-items:center;gap:8px"><i data-lucide="alert-triangle" class="lucide lucide-lg" style="stroke:#e85050"></i> איפוס הכל?</h3>
+    <p>כל הכתוביות שנוצרו ייעלמו. אם לא הורדת את קובץ ה-SRT - הוא יאבד.</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">ביטול</button>
+      <button class="btn" style="background:var(--danger);color:#fff" onclick="resetAll()">כן, אפס</button>
     </div>
   </div>
+</div>
 
-  <div id="toast"><span class="toast-icon"></span><span id="toast-msg"></span></div>
+<!-- Burn settings modal -->
+<div class="modal-overlay" id="burn-settings-modal">
+  <div class="modal" style="max-width:520px">
+    <h3><i data-lucide="palette" style="width:14px;height:14px;flex-shrink:0"></i> עיצוב כתוביות</h3>
+    <p style="margin-bottom:12px">השינויים יתעדכנו בסרטון בזמן אמת</p>
+    <div class="burn-preview" style="margin-bottom:16px">
+      <div class="burn-preview-text" id="burn-preview-text">זאת דוגמה לפי ההגדרות שבחרת</div>
+    </div>
+    <div class="burn-grid" style="margin-top:0">
+      <div class="form-group">
+        <label class="form-label">פונט</label>
+        <select class="form-control" id="burn-font" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
+          <option>Arial</option><option>David</option><option>Tahoma</option>
+          <option>Times New Roman</option><option>Courier New</option><option>Georgia</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">מיקום בסרטון</label>
+        <select class="form-control" id="burn-position" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
+          <option value="very-bottom">תחתית - צמוד</option>
+          <option value="bottom" selected>תחתית - רגיל</option>
+          <option value="center-bottom">מרכז - תחתון</option>
+          <option value="center">מרכז</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">צבע טקסט</label>
+        <select class="form-control" id="burn-color" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
+          <option value="white">⬜ לבן</option>
+          <option value="yellow">💛 צהוב</option>
+          <option value="black">⬛ שחור</option>
+          <option value="cyan">🩵 תכלת</option>
+          <option value="lime">💚 ירוק בהיר</option>
+          <option value="red">❤️ אדום</option>
+          <option value="orange">🟠 כתום</option>
+          <option value="pink">🩷 ורוד</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">צבע מסגרת / צל</label>
+        <select class="form-control" id="burn-outline" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
+          <option value="none">ללא</option>
+          <option value="black" selected>שחור</option>
+          <option value="white">לבן</option>
+          <option value="dark-shadow">צל כהה</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">גודל פונט: <span id="font-size-val">16</span>px</label>
+        <input type="range" min="14" max="56" value="16" id="burn-fontsize"
+          oninput="document.getElementById('font-size-val').textContent=this.value;updateBurnPreview();scheduleApplyStyles()"/>
+        <div class="range-label"><span>14</span><span>56</span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">סגנון טקסט</label>
+        <select class="form-control" id="burn-style" onchange="updateBurnPreview();applyBurnStylesToOverlay()">
+          <option value="normal">רגיל</option>
+          <option value="bold">מודגש</option>
+          <option value="italic">נטוי</option>
+          <option value="bold-italic">מודגש + נטוי</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin:4px 0 20px">
+      <label class="form-label">שקיפות רקע: <span id="bg-opacity-val">0</span>%</label>
+      <input type="range" min="0" max="80" value="55" id="burn-bg-opacity"
+        oninput="document.getElementById('bg-opacity-val').textContent=this.value;updateBurnPreview();scheduleApplyStyles()"/>
+      <div class="range-label"><span>ללא רקע</span><span>רקע כהה</span></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="resetBurnDefaults()">↩ חזור לברירת מחדל</button>
+      <button class="btn btn-primary" onclick="closeModal('burn-settings-modal')">סגור</button>
+    </div>
+  </div>
+</div>
 
-  <script src="js/app.js"></script>
+<!-- Paste correction modal -->
+<div class="modal-overlay" id="paste-modal">
+  <div class="modal">
+    <h3>📥 הדבק את התיקון מ-Claude</h3>
+    <p>הדבק כאן את התשובה שקיבלת. פורמט: "1. טקסט" שורה לכל כתובית.</p>
+    <textarea class="modal-input" id="paste-area" rows="10" style="height:200px;font-size:14px"
+      placeholder="1. הטקסט המתוקן&#10;2. שורה שנייה&#10;3. ..."></textarea>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('paste-modal')">ביטול</button>
+      <button class="btn btn-primary" onclick="applyPastedCorrection()">החל תיקון</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span class="toast-icon"></span><span id="toast-msg"></span></div>
+
+<script src="js/app.js"></script>
 </body>
-
 </html>

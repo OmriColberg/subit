@@ -72,13 +72,21 @@ applyTheme();
 // Same HTML for both - renderSRTList() is untouched. The .view-rows class
 // on #srt-list re-flows every item into one line via CSS, so editing,
 // insert/delete, and highlight behavior is shared between the views.
-let editorView = localStorage.getItem('editorView') === 'rows' ? 'rows' : 'cards';
+let editorView = ['rows','timeline'].includes(localStorage.getItem('editorView'))
+  ? localStorage.getItem('editorView') : 'cards';
 function setEditorView(view) {
   editorView = view;
+  const isTl = view === 'timeline';
+  document.querySelector('.srt-list-wrap').style.display = isTl ? 'none' : '';
+  document.getElementById('timeline-view').style.display = isTl ? '' : 'none';
   document.getElementById('srt-list').classList.toggle('view-rows', view === 'rows');
   document.getElementById('view-btn-cards').classList.toggle('active', view === 'cards');
   document.getElementById('view-btn-rows').classList.toggle('active', view === 'rows');
+  document.getElementById('view-btn-timeline').classList.toggle('active', isTl);
   localStorage.setItem('editorView', view);
+  // rAF defers to after the whole script is parsed - buildTimeline and its
+  // state live further down the file, and this runs once at load time too.
+  if (isTl) requestAnimationFrame(buildTimeline);
 }
 setEditorView(editorView);  // apply saved preference on load
 
@@ -302,6 +310,9 @@ function showResults() {
   // align runs automatically — no button needed
   renderSRTList(); syncPlainText();
   document.getElementById('srt-count').textContent = `${state.segments.length} כתוביות`;
+  // New video: reset timeline scale/selection so it refits to the new duration
+  tlPps = 0; tlSelectedIdx = null;
+  if (editorView === 'timeline') requestAnimationFrame(buildTimeline);
   // Load video player
   if (state.videoBlobUrl) {
     const player = document.getElementById('video-player');
@@ -375,8 +386,9 @@ function renderSRTList() {
         >${seg.text}</textarea>
       </div>
     </div>`;
-  }).join('');
+}).join('');
   refreshVideoTrack();  // keep the video's WebVTT cues in sync with every edit
+  renderTimelineSubs(); // and the timeline blocks (no-op unless that view is on)
 }
 
 // ── INSERT / DELETE — event delegation on srt-list ──────────────
@@ -536,7 +548,7 @@ function onSegChange(el) {
   editSessionTimer = setTimeout(() => { inEditSession = false; }, 2000);
   const field = el.dataset.field;
   const idx = +el.dataset.idx;
-  if (field === 'text') {
+if (field === 'text') {
     state.segments[idx][field] = el.value;
     syncPlainText();
     scheduleAutoSave();
@@ -611,9 +623,9 @@ function showAutosaved() {
 
 // ── FULLSCREEN: custom button on .video-wrap ──────────────────────
 function toggleVideoFullscreen() {
-  const wrap = document.getElementById('video-wrap');
+  const wrap  = document.getElementById('video-wrap');
   const video = document.getElementById('video-player');
-  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const isFs  = !!(document.fullscreenElement || document.webkitFullscreenElement);
 
   // Path 1: real Fullscreen API (desktop, Android, iPad) - fullscreen the
   // wrapper so our custom controls + ::cue styling stay intact.
@@ -892,8 +904,8 @@ let _vttBlobUrl = null;
 function buildVTT() {
   const pos = document.getElementById('burn-position')?.value || 'bottom';
   const lineMap = {
-    'very-bottom': '96%', 'bottom': '88%', 'center-bottom': '72%',
-    'center': '50%', 'center-top': '30%', 'top': '12%', 'very-top': '5%',
+    'very-bottom':'96%', 'bottom':'88%', 'center-bottom':'72%',
+    'center':'50%', 'center-top':'30%', 'top':'12%', 'very-top':'5%',
   };
   const line = lineMap[pos] || lineMap['bottom'];
 
@@ -902,7 +914,7 @@ function buildVTT() {
     const text = (s.text || '').trim();
     if (!text) return;                       // skip empty cues
     const start = s.start.replace(',', '.'); // SRT uses comma, VTT uses dot
-    const end = s.end.replace(',', '.');
+    const end   = s.end.replace(',', '.');
     vtt += `${i + 1}\n${start} --> ${end} line:${line} align:center\n${text}\n\n`;
   });
   return vtt;
@@ -921,6 +933,286 @@ function refreshVideoTrack() {
   const show = () => { if (video.textTracks[0]) video.textTracks[0].mode = 'showing'; };
   track.addEventListener('load', show, { once: true });
   setTimeout(show, 0);
+}
+
+// ── TIMELINE VIEW ─────────────────────────────────────────────────
+// RTL axis: t=0 sits at the RIGHT edge, so every element is positioned with
+// `right: t*tlPps px`. Same state.segments as the other views - dragging a
+// block writes SRT strings back through secToSrt, then renderSRTList() keeps
+// the list, the WebVTT track, and this view in sync.
+let tlPps = 0;              // pixels per second (0 = not built yet)
+let tlSelectedIdx = null;   // which block is selected/being edited
+let tlThumbs = [];          // [{t, url}] cached per video
+let tlThumbsForBlob = null; // which blob the cache belongs to
+let tlWired = false;        // one-time video event wiring
+
+const MIN_SEG_SEC = 0.2;
+
+function tlDuration() {
+  const v = document.getElementById('video-player');
+  return (v && isFinite(v.duration) && v.duration > 0) ? v.duration : 0;
+}
+
+function buildTimeline() {
+  if (editorView !== 'timeline') return;
+  const dur = tlDuration();
+  const inner = document.getElementById('tl-inner');
+  if (!dur) {
+    // metadata not in yet (or no video) - retry when it arrives
+    const v = document.getElementById('video-player');
+    if (v) v.addEventListener('loadedmetadata', buildTimeline, { once: true });
+    inner.style.width = '100%';
+    document.getElementById('tl-ruler').innerHTML =
+      '<span style="padding:0 10px;font-size:11px;color:var(--muted);line-height:20px">אין סרטון טעון</span>';
+    return;
+  }
+  if (!tlPps) {
+    // first build: fit the whole video into the visible strip
+    const w = document.getElementById('tl-scroll').clientWidth || 600;
+    tlPps = Math.max(2, (w - 20) / dur);
+  }
+  inner.style.width = Math.ceil(dur * tlPps) + 'px';
+  tlRenderRuler(dur);
+  tlRenderThumbs(dur);
+  renderTimelineSubs();
+  tlUpdatePlayhead();
+  tlWireVideo();
+}
+
+function tlZoom(factor) {
+  if (!tlPps) return;
+  tlPps = Math.min(300, Math.max(1, tlPps * factor));
+  buildTimeline();
+}
+
+function tlRenderRuler(dur) {
+  // pick a tick step that keeps labels ~90px apart
+  const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  const step = steps.find(s => s * tlPps >= 70) || 600;
+  let html = '';
+  for (let t = 0; t <= dur; t += step) {
+    html += `<div class="tl-tick" style="right:${t * tlPps}px">${tlFmt(t)}</div>`;
+  }
+  document.getElementById('tl-ruler').innerHTML = html;
+}
+
+function tlFmt(t) {
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// ── Filmstrip thumbnails ──
+// The video plays from a local blob URL (state.videoBlobUrl), which is
+// same-origin - so drawing it to a canvas is allowed. A hidden clone video
+// seeks through N points; frames are cached per blob and reused across zooms.
+async function tlRenderThumbs(dur) {
+  const film = document.getElementById('tl-film');
+  const place = () => {
+    film.innerHTML = tlThumbs.map(th =>
+      `<div class="tl-thumb" style="right:${th.t * tlPps}px;width:${Math.ceil(th.w * tlPps) + 1}px;background-image:url('${th.url}')"></div>`
+    ).join('');
+  };
+  if (tlThumbsForBlob === state.videoBlobUrl && tlThumbs.length) { place(); return; }
+  if (!state.videoBlobUrl) { film.innerHTML = ''; return; }
+
+  tlThumbs = []; tlThumbsForBlob = state.videoBlobUrl;
+  const N = Math.min(24, Math.max(6, Math.ceil(dur / 5)));
+  const slice = dur / N;
+  try {
+    const v = document.createElement('video');
+    v.muted = true; v.preload = 'auto'; v.src = state.videoBlobUrl;
+    await new Promise((res, rej) => {
+      v.onloadeddata = res; v.onerror = rej;
+      setTimeout(rej, 8000);
+    });
+    const cw = 90, ch = 50;
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    for (let i = 0; i < N; i++) {
+      const t = i * slice + slice / 2;
+      await new Promise((res) => {
+        v.onseeked = res; v.currentTime = Math.min(t, dur - 0.05);
+        setTimeout(res, 1200); // don't hang on a stubborn seek
+      });
+      ctx.drawImage(v, 0, 0, cw, ch);
+      tlThumbs.push({ t: i * slice, w: slice, url: canvas.toDataURL('image/jpeg', 0.5) });
+      if (editorView === 'timeline') place(); // progressive fill
+    }
+    v.src = ''; v.load();
+  } catch {
+    film.innerHTML = ''; // no thumbnails - the strip stays plain black
+  }
+}
+
+// ── Subtitle blocks ──
+function renderTimelineSubs() {
+  if (editorView !== 'timeline' || !tlPps) return;
+  const wrap = document.getElementById('tl-subs');
+  wrap.innerHTML = state.segments.map((s, i) => {
+    const st = srtToSec(s.start), en = srtToSec(s.end);
+    const w = Math.max((en - st) * tlPps, 14);
+    return `<div class="tl-block${i === tlSelectedIdx ? ' selected' : ''}" data-tlidx="${i}"
+      style="right:${st * tlPps}px;width:${w}px" title="${(s.text || '').replace(/"/g, '&quot;')}">
+      <div class="tl-handle h-start" data-mode="start"></div>
+      <span style="pointer-events:none">${s.text || '(ריק)'}</span>
+      <div class="tl-handle h-end" data-mode="end"></div>
+    </div>`;
+  }).join('');
+  tlSyncEditor();
+}
+
+function tlSelect(idx, seek = true) {
+  tlSelectedIdx = idx;
+  renderTimelineSubs();
+  const seg = state.segments[idx];
+  if (seek && seg) {
+    const v = document.getElementById('video-player');
+    if (v) v.currentTime = srtToSec(seg.start) + 0.01;
+  }
+}
+
+// ── Inline editor under the strip ──
+function tlSyncEditor() {
+  const ed = document.getElementById('tl-editor');
+  const seg = tlSelectedIdx != null ? state.segments[tlSelectedIdx] : null;
+  ed.style.display = seg ? '' : 'none';
+  if (!seg) return;
+  document.getElementById('tl-editor-num').textContent = '#' + (tlSelectedIdx + 1);
+  // don't clobber the field the user is typing in
+  const txt = document.getElementById('tl-edit-text');
+  if (document.activeElement !== txt) txt.value = seg.text || '';
+  const stI = document.getElementById('tl-edit-start');
+  const enI = document.getElementById('tl-edit-end');
+  if (document.activeElement !== stI) stI.value = formatTimeDisplay(seg.start);
+  if (document.activeElement !== enI) enI.value = formatTimeDisplay(seg.end);
+}
+
+function tlEditorTextChanged() {
+  const seg = state.segments[tlSelectedIdx];
+  if (!seg) return;
+  seg.text = document.getElementById('tl-edit-text').value;
+  syncPlainText(); scheduleAutoSave(); scheduleTrackRefresh();
+  // update the block label without a full rebuild (keeps typing smooth)
+  const block = document.querySelector(`.tl-block[data-tlidx="${tlSelectedIdx}"] span`);
+  if (block) block.textContent = seg.text || '(ריק)';
+}
+
+function tlEditorTimeChanged(field) {
+  const seg = state.segments[tlSelectedIdx];
+  if (!seg) return;
+  const el = document.getElementById(field === 'start' ? 'tl-edit-start' : 'tl-edit-end');
+  const srt = parseTimeInput(el.value);
+  if (!srt) { el.value = formatTimeDisplay(seg[field]); toast('error', 'פורמט זמן לא תקין — השתמש ב-MM:SS.d'); return; }
+  pushUndo();
+  const sec = srtToSec(srt);
+  const { lo, hi } = tlBounds(tlSelectedIdx, field);
+  const clamped = Math.min(Math.max(sec, lo), hi);
+  seg[field] = secToSrt(clamped);
+  renderSRTList(); syncPlainText(); scheduleAutoSave();
+}
+
+// legal range for a given edge, so blocks can't overlap neighbors
+function tlBounds(idx, field) {
+  const segs = state.segments, dur = tlDuration();
+  if (field === 'start') {
+    const lo = idx > 0 ? srtToSec(segs[idx - 1].end) : 0;
+    const hi = srtToSec(segs[idx].end) - MIN_SEG_SEC;
+    return { lo, hi };
+  } else {
+    const lo = srtToSec(segs[idx].start) + MIN_SEG_SEC;
+    const hi = idx < segs.length - 1 ? srtToSec(segs[idx + 1].start) : (dur || 1e9);
+    return { lo, hi };
+  }
+}
+
+// ── Dragging: move a block, or resize via its edge handles ──
+let tlDrag = null;
+document.getElementById('tl-subs').addEventListener('pointerdown', (e) => {
+  const block = e.target.closest('.tl-block');
+  if (!block) return;
+  const idx = +block.dataset.tlidx;
+  const mode = e.target.dataset.mode || 'move'; // 'start' | 'end' | 'move'
+  const seg = state.segments[idx];
+  tlDrag = {
+    idx, mode, startX: e.clientX, moved: false,
+    origStart: srtToSec(seg.start), origEnd: srtToSec(seg.end),
+  };
+  block.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+document.getElementById('tl-subs').addEventListener('pointermove', (e) => {
+  if (!tlDrag) return;
+  // RTL: dragging left (negative dx) means LATER in time
+  const dt = -(e.clientX - tlDrag.startX) / tlPps;
+  if (!tlDrag.moved && Math.abs(dt * tlPps) < 3) return; // click, not drag (yet)
+  if (!tlDrag.moved) { pushUndo(); tlDrag.moved = true; }
+
+  const seg = state.segments[tlDrag.idx];
+  const d = tlDrag;
+  if (d.mode === 'move') {
+    const len = d.origEnd - d.origStart;
+    const prevEnd = d.idx > 0 ? srtToSec(state.segments[d.idx - 1].end) : 0;
+    const nextStart = d.idx < state.segments.length - 1
+      ? srtToSec(state.segments[d.idx + 1].start) : (tlDuration() || 1e9);
+    const ns = Math.min(Math.max(d.origStart + dt, prevEnd), nextStart - len);
+    seg.start = secToSrt(ns); seg.end = secToSrt(ns + len);
+  } else {
+    const field = d.mode;
+    const base = field === 'start' ? d.origStart : d.origEnd;
+    const { lo, hi } = tlBounds(d.idx, field);
+    seg[field] = secToSrt(Math.min(Math.max(base + dt, lo), hi));
+  }
+  // live-move just this block (full rebuild waits for pointerup)
+  const block = document.querySelector(`.tl-block[data-tlidx="${d.idx}"]`);
+  if (block) {
+    const st = srtToSec(seg.start), en = srtToSec(seg.end);
+    block.style.right = (st * tlPps) + 'px';
+    block.style.width = Math.max((en - st) * tlPps, 14) + 'px';
+  }
+  tlSyncEditor();
+});
+document.getElementById('tl-subs').addEventListener('pointerup', (e) => {
+  if (!tlDrag) return;
+  const wasDrag = tlDrag.moved, idx = tlDrag.idx;
+  tlDrag = null;
+  if (wasDrag) {
+    renderSRTList(); syncPlainText(); scheduleAutoSave();
+    tlSelect(idx, false);
+  } else {
+    tlSelect(idx, true); // plain click: select + jump the video there
+  }
+});
+
+// clicking the filmstrip or ruler seeks
+function tlSeekFromEvent(e) {
+  const inner = document.getElementById('tl-inner');
+  const rect = inner.getBoundingClientRect();
+  const t = (rect.right - e.clientX) / tlPps; // RTL: distance from the right edge
+  const v = document.getElementById('video-player');
+  if (v && tlDuration()) v.currentTime = Math.min(Math.max(t, 0), tlDuration());
+}
+document.getElementById('tl-film').addEventListener('click', tlSeekFromEvent);
+document.getElementById('tl-ruler').addEventListener('click', tlSeekFromEvent);
+
+// ── Playhead ──
+function tlUpdatePlayhead() {
+  if (editorView !== 'timeline' || !tlPps) return;
+  const v = document.getElementById('video-player');
+  if (!v) return;
+  document.getElementById('tl-playhead').style.right = (v.currentTime * tlPps) + 'px';
+}
+function tlWireVideo() {
+  if (tlWired) return;
+  tlWired = true;
+  const v = document.getElementById('video-player');
+  // smooth playhead while playing (timeupdate alone fires only ~4x/sec)
+  const loop = () => {
+    tlUpdatePlayhead();
+    if (!v.paused && !v.ended) requestAnimationFrame(loop);
+  };
+  v.addEventListener('play', () => requestAnimationFrame(loop));
+  v.addEventListener('seeked', tlUpdatePlayhead);
 }
 
 // Track which srt-item index is currently "active" (was previously clicked)
@@ -963,19 +1255,19 @@ function scheduleApplyStyles() {
 // NOTE: position is NOT set here - it lives in the VTT "line:" setting, so a
 // position change requires rebuilding the track (hence refreshVideoTrack below).
 function applyBurnStylesToOverlay() {
-  const font = document.getElementById('burn-font')?.value || 'Arial';
-  const color = document.getElementById('burn-color')?.value || 'white';
+  const font    = document.getElementById('burn-font')?.value || 'Arial';
+  const color   = document.getElementById('burn-color')?.value || 'white';
   const outline = document.getElementById('burn-outline')?.value || 'none';
-  const size = parseInt(document.getElementById('burn-fontsize')?.value || 24);
-  const style = document.getElementById('burn-style')?.value || 'normal';
-  const bgOp = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+  const size    = parseInt(document.getElementById('burn-fontsize')?.value || 24);
+  const style   = document.getElementById('burn-style')?.value || 'normal';
+  const bgOp    = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
 
-  const colorMap = { white: '#fff', yellow: '#ff0', black: '#000', cyan: '#0ff', lime: '#0f8', red: '#f44', orange: '#f90', pink: '#f8c' };
+  const colorMap = {white:'#fff',yellow:'#ff0',black:'#000',cyan:'#0ff',lime:'#0f8',red:'#f44',orange:'#f90',pink:'#f8c'};
   const txtColor = colorMap[color] || '#fff';
 
   let shadow = 'none';
-  if (outline === 'black') shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
-  else if (outline === 'white') shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
+  if (outline === 'black')            shadow = '2px 2px 3px #000,-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000';
+  else if (outline === 'white')       shadow = '2px 2px 3px #fff,-1px -1px 2px #fff';
   else if (outline === 'dark-shadow') shadow = '3px 4px 8px rgba(0,0,0,.9)';
 
   let styleEl = document.getElementById('cue-style');
@@ -992,7 +1284,7 @@ function applyBurnStylesToOverlay() {
       font-weight: ${style.includes('bold') ? '700' : '400'};
       font-style: ${style.includes('italic') ? 'italic' : 'normal'};
       text-shadow: ${shadow};
-      background: ${bgOp > 0 ? `rgba(0,0,0,${bgOp / 100})` : 'transparent'};
+      background: ${bgOp > 0 ? `rgba(0,0,0,${bgOp/100})` : 'transparent'};
     }`;
 
   refreshVideoTrack();  // position lives in the cues themselves
@@ -1190,7 +1482,9 @@ function resetAll() {
   if (player) { player.src = ''; player.load(); }
   const tr = document.getElementById('video-track');
   if (tr) tr.removeAttribute('src');
-  if (_vttBlobUrl) { URL.revokeObjectURL(_vttBlobUrl); _vttBlobUrl = null; } document.getElementById('video-wrap').style.display = 'none';
+  if (_vttBlobUrl) { URL.revokeObjectURL(_vttBlobUrl); _vttBlobUrl = null; }
+  tlPps = 0; tlSelectedIdx = null; tlThumbs = []; tlThumbsForBlob = null;
+  document.getElementById('video-wrap').style.display = 'none';
   document.getElementById('video-no-file').style.display = 'block';
   if (state.videoBlobUrl) { URL.revokeObjectURL(state.videoBlobUrl); state.videoBlobUrl = null; }
   document.getElementById('file-input').value = '';

@@ -861,6 +861,230 @@ header {
   display: none
 }
 
+/* ── Timeline view ────────────────────────────────────────────────
+   RTL time axis: t=0 at the RIGHT edge, playback moves leftward.
+   Blocks are positioned with `right: t*pps px`. */
+#timeline-view {
+  margin-top: 4px
+}
+
+.tl-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px
+}
+
+.tl-zoom-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1
+}
+
+.tl-zoom-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent)
+}
+
+.tl-hint {
+  font-size: 11px;
+  color: var(--muted)
+}
+
+.tl-scroll {
+  direction: rtl;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  background: var(--surface2);
+}
+
+.tl-scroll::-webkit-scrollbar {
+  height: 6px
+}
+
+.tl-scroll::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 3px
+}
+
+.tl-inner {
+  position: relative;
+  height: 118px;
+  min-width: 100%
+}
+
+.tl-ruler {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 20px;
+  border-bottom: 1px solid var(--border2)
+}
+
+.tl-tick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-right: 1px solid var(--border2);
+  padding-right: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 20px;
+  white-space: nowrap
+}
+
+.tl-subs {
+  position: absolute;
+  top: 24px;
+  right: 0;
+  left: 0;
+  height: 34px
+}
+
+.tl-block {
+  position: absolute;
+  top: 0;
+  height: 34px;
+  background: rgba(245, 66, 66, .16);
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text);
+  padding: 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.tl-block:active {
+  cursor: grabbing
+}
+
+.tl-block.selected {
+  background: rgba(245, 66, 66, .32);
+  box-shadow: 0 0 0 2px var(--accent)
+}
+
+.tl-block .tl-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: ew-resize;
+}
+
+.tl-block .tl-handle.h-start {
+  right: 0
+}
+
+.tl-block .tl-handle.h-end {
+  left: 0
+}
+
+.tl-block .tl-handle::after {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: .6;
+  right: 3px;
+}
+
+.tl-film {
+  position: absolute;
+  top: 64px;
+  right: 0;
+  left: 0;
+  height: 44px;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer
+}
+
+.tl-thumb {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background-size: cover;
+  background-position: center
+}
+
+.tl-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(245, 66, 66, .6);
+}
+
+.tl-playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -4px;
+  border: 5px solid transparent;
+  border-top: 7px solid var(--accent);
+}
+
+.tl-editor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  background: var(--surface2);
+}
+
+.tl-editor-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 20px;
+  text-align: center
+}
+
+.tl-edit-text {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-he);
+  font-size: 15px;
+  direction: rtl;
+  border-bottom: 1px solid transparent;
+  transition: border-color .2s;
+}
+
+.tl-edit-text:focus {
+  border-bottom-color: var(--accent)
+}
+
 .srt-list::-webkit-scrollbar {
   width: 4px
 }
@@ -1457,7 +1681,7 @@ html.light .srt-loading-overlay {
   font-weight: 600;
   line-height: 1.4;
   color: #fff;
-  background: transparent;
+  background: rgba(0, 0, 0, .55);
   text-shadow: 2px 2px 3px #000, -1px -1px 2px #000;
 }
 
