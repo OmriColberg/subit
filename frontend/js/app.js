@@ -977,6 +977,7 @@ function buildTimeline() {
   renderTimelineSubs();
   tlUpdatePlayhead();
   tlWireVideo();
+  tlSyncPlayIcon();
 }
 
 function tlZoom(factor) {
@@ -1196,24 +1197,88 @@ document.getElementById('tl-film').addEventListener('click', tlSeekFromEvent);
 document.getElementById('tl-ruler').addEventListener('click', tlSeekFromEvent);
 
 // ── Playhead ──
-function tlUpdatePlayhead() {
+function tlUpdatePlayhead(autoScroll = false) {
   if (editorView !== 'timeline' || !tlPps) return;
   const v = document.getElementById('video-player');
   if (!v) return;
-  document.getElementById('tl-playhead').style.right = (v.currentTime * tlPps) + 'px';
+  const x = v.currentTime * tlPps;
+  document.getElementById('tl-playhead').style.right = x + 'px';
+
+  // Keep the playhead in view while playing. RTL scrollLeft sign differs
+  // across browsers, so instead of computing with it, we measure the
+  // playhead's actual on-screen X and nudge scroll by the delta - sign-agnostic.
+  if (autoScroll) {
+    const scroll = document.getElementById('tl-scroll');
+    const phRect = document.getElementById('tl-playhead').getBoundingClientRect();
+    const sRect = scroll.getBoundingClientRect();
+    const margin = 60;
+    // playing moves the head leftward on screen; recenter when it nears an edge
+    if (phRect.left < sRect.left + margin || phRect.left > sRect.right - margin) {
+      // put the head ~70% across from the left (i.e. 30% from right)
+      const desiredScreenX = sRect.left + sRect.width * 0.7;
+      scroll.scrollLeft += (phRect.left - desiredScreenX);
+    }
+  }
 }
+
+function tlTogglePlay() {
+  const v = document.getElementById('video-player');
+  if (!v || !v.src) return;
+  if (v.paused) v.play(); else v.pause();
+}
+function tlSyncPlayIcon() {
+  const v = document.getElementById('video-player');
+  const playing = v && !v.paused && !v.ended;
+  const play = document.getElementById('tl-play-icon');
+  const pause = document.getElementById('tl-pause-icon');
+  if (play)  play.style.display  = playing ? 'none' : 'block';
+  if (pause) pause.style.display = playing ? 'block' : 'none';
+}
+
 function tlWireVideo() {
   if (tlWired) return;
   tlWired = true;
   const v = document.getElementById('video-player');
   // smooth playhead while playing (timeupdate alone fires only ~4x/sec)
   const loop = () => {
-    tlUpdatePlayhead();
+    tlUpdatePlayhead(true); // autoscroll to follow playback
     if (!v.paused && !v.ended) requestAnimationFrame(loop);
   };
-  v.addEventListener('play', () => requestAnimationFrame(loop));
-  v.addEventListener('seeked', tlUpdatePlayhead);
+  v.addEventListener('play',  () => { requestAnimationFrame(loop); tlSyncPlayIcon(); });
+  v.addEventListener('pause', tlSyncPlayIcon);
+  v.addEventListener('ended', tlSyncPlayIcon);
+  v.addEventListener('seeked', () => tlUpdatePlayhead(false));
 }
+
+// ── Dragging the playhead to scrub ──
+(function wirePlayheadDrag() {
+  const ph = document.getElementById('tl-playhead');
+  if (!ph) return;
+  let dragging = false;
+  const seekTo = (clientX) => {
+    const inner = document.getElementById('tl-inner');
+    const rect = inner.getBoundingClientRect();
+    const t = (rect.right - clientX) / tlPps; // RTL
+    const v = document.getElementById('video-player');
+    if (v && tlDuration()) v.currentTime = Math.min(Math.max(t, 0), tlDuration());
+  };
+  ph.addEventListener('pointerdown', (e) => {
+    dragging = true; ph.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation();
+  });
+  ph.addEventListener('pointermove', (e) => { if (dragging) seekTo(e.clientX); });
+  ph.addEventListener('pointerup',   (e) => { dragging = false; });
+})();
+
+// ── Spacebar = play/pause (only in timeline view, not while typing) ──
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' || editorView !== 'timeline') return;
+  const t = e.target;
+  const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  if (typing) return;
+  if (document.getElementById('timeline-view').style.display === 'none') return;
+  e.preventDefault();
+  tlTogglePlay();
+});
 
 // Track which srt-item index is currently "active" (was previously clicked)
 let activeSrtIdx = null;

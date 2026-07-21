@@ -248,9 +248,13 @@
         <!-- Timeline view: video filmstrip + subtitles positioned on a RTL time axis -->
         <div id="timeline-view" style="display:none">
           <div class="tl-controls">
+            <button class="tl-play-btn" id="tl-play-btn" onclick="tlTogglePlay()" title="נגן / השהה (רווח)">
+              <svg id="tl-play-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="tl-pause-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            </button>
             <button class="tl-zoom-btn" onclick="tlZoom(1/1.5)" title="הקטן">−</button>
             <button class="tl-zoom-btn" onclick="tlZoom(1.5)" title="הגדל">+</button>
-            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | לחיצה על הרצועה = קפיצה</span>
+            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | גרור את הסמן להזזה בסרטון</span>
           </div>
           <div class="tl-scroll" id="tl-scroll">
             <div class="tl-inner" id="tl-inner">
