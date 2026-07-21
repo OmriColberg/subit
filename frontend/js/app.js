@@ -68,6 +68,20 @@ function toggleTheme() {
 applyTheme();
 // AI powered by Gemini (key stored server-side)
 
+// ── EDITOR VIEW: cards (default) / rows (horizontal timeline) ─────
+// Same HTML for both - renderSRTList() is untouched. The .view-rows class
+// on #srt-list re-flows every item into one line via CSS, so editing,
+// insert/delete, and highlight behavior is shared between the views.
+let editorView = localStorage.getItem('editorView') === 'rows' ? 'rows' : 'cards';
+function setEditorView(view) {
+  editorView = view;
+  document.getElementById('srt-list').classList.toggle('view-rows', view === 'rows');
+  document.getElementById('view-btn-cards').classList.toggle('active', view === 'cards');
+  document.getElementById('view-btn-rows').classList.toggle('active', view === 'rows');
+  localStorage.setItem('editorView', view);
+}
+setEditorView(editorView);  // apply saved preference on load
+
 // ── TRANSCRIPT HINT ───────────────────────────────────────────────
 function selectMode(mode) {
   document.getElementById('mode-file-only').classList.toggle('active', mode === 'file-only');
@@ -597,14 +611,25 @@ function showAutosaved() {
 
 // ── FULLSCREEN: custom button on .video-wrap ──────────────────────
 function toggleVideoFullscreen() {
-  const wrap = document.getElementById('video-wrap');
-  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-  if (!isFs) {
-    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
-    if (req) req.call(wrap);
-  } else {
+  const wrap  = document.getElementById('video-wrap');
+  const video = document.getElementById('video-player');
+  const isFs  = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+  // Path 1: real Fullscreen API (desktop, Android, iPad) - fullscreen the
+  // wrapper so our custom controls + ::cue styling stay intact.
+  const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+  if (req && !isFs) { req.call(wrap); return; }
+  if (isFs) {
     const ex = document.exitFullscreen || document.webkitExitFullscreen;
     if (ex) ex.call(document);
+    return;
+  }
+
+  // Path 2: iPhone. The Fullscreen API doesn't work on elements here, so fall
+  // back to the native video player. Our WebVTT <track> shows up inside it
+  // (an overlay div would not), so subtitles survive - styled by iOS, not ::cue.
+  if (video && video.webkitEnterFullscreen) {
+    video.webkitEnterFullscreen();
   }
 }
 // Toggle icon when fullscreen changes

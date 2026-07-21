@@ -127,6 +127,42 @@ header{padding:40px 0 36px;display:flex;align-items:center;justify-content:space
 .srt-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .srt-count{font-size:13px;color:var(--muted);flex:1}
 .srt-list{max-height:290px;overflow-y:auto}
+/* ── View toggle (cards / rows) ── */
+.view-toggle{display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:2px}
+.view-toggle-btn{display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:5px;padding:5px 8px;cursor:pointer;color:var(--muted);transition:background .15s,color .15s}
+.view-toggle-btn:hover{color:var(--text)}
+.view-toggle-btn.active{background:var(--accent);color:#fff}
+
+/* ── Horizontal rows view ─────────────────────────────────────────
+   Same HTML as the cards view - renderSRTList() output is untouched.
+   The .view-rows class just re-flows each item into a single line:
+   [num+buttons] [start] ← [end] [text...........................] */
+.srt-list.view-rows .srt-item{
+  display:flex;align-items:center;gap:8px;
+  padding:4px 10px;margin-bottom:3px;
+}
+.srt-list.view-rows .srt-num-col{
+  flex-direction:row;align-items:center;gap:4px;flex-shrink:0;width:auto;
+}
+.srt-list.view-rows .srt-num{padding-top:0;min-width:20px}
+.srt-list.view-rows .srt-item>div:last-child{
+  display:flex;flex:1;align-items:center;gap:10px;min-width:0;
+}
+.srt-list.view-rows .srt-time{
+  margin-bottom:0;flex-shrink:0;
+}
+.srt-list.view-rows .text-input{
+  flex:1;height:26px;min-height:26px;line-height:26px;
+  overflow-y:auto; /* subtitles are ~4 words so one line almost always fits */
+}
+/* btn-area is 38x46 in cards mode - shrink it so rows stay short */
+.srt-list.view-rows .srt-btn-area{width:34px;height:22px;margin-top:0}
+.srt-list.view-rows .srt-delete-btn span,
+.srt-list.view-rows .srt-insert-after-btn span{display:none} /* icon-only */
+.srt-list.view-rows .srt-delete-btn,
+.srt-list.view-rows .srt-insert-after-btn{flex-direction:row;gap:0}
+/* the floating "✏️ לחץ לעריכה" badge overlaps the end-time in a compact row */
+.srt-list.view-rows .srt-item::after{display:none}
 .srt-list::-webkit-scrollbar{width:4px}
 .srt-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .srt-item{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:12px;border-radius:8px;margin-bottom:6px;background:var(--surface2);border:1px solid transparent;transition:border-color .2s}
