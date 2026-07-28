@@ -68,19 +68,17 @@ function toggleTheme() {
 applyTheme();
 // AI powered by Gemini (key stored server-side)
 
-// ── EDITOR VIEW: cards (default) / rows (horizontal timeline) ─────
-// Same HTML for both - renderSRTList() is untouched. The .view-rows class
-// on #srt-list re-flows every item into one line via CSS, so editing,
-// insert/delete, and highlight behavior is shared between the views.
-let editorView = ['rows','timeline'].includes(localStorage.getItem('editorView'))
-  ? localStorage.getItem('editorView') : 'cards';
+// ── EDITOR VIEW: rows (default) / timeline ────────────────────────
+// The list view always uses the .view-rows layout (one line per subtitle).
+// renderSRTList() output is untouched - the class just re-flows it via CSS.
+let editorView = localStorage.getItem('editorView') === 'timeline' ? 'timeline' : 'rows';
 function setEditorView(view) {
   editorView = view;
   const isTl = view === 'timeline';
   document.querySelector('.srt-list-wrap').style.display = isTl ? 'none' : '';
   document.getElementById('timeline-view').style.display = isTl ? '' : 'none';
-  document.getElementById('srt-list').classList.toggle('view-rows', view === 'rows');
-  document.getElementById('view-btn-cards').classList.toggle('active', view === 'cards');
+  // list view is always the rows layout now
+  document.getElementById('srt-list').classList.toggle('view-rows', !isTl);
   document.getElementById('view-btn-rows').classList.toggle('active', view === 'rows');
   document.getElementById('view-btn-timeline').classList.toggle('active', isTl);
   localStorage.setItem('editorView', view);

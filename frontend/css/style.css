@@ -758,7 +758,7 @@ header {
   overflow-y: auto
 }
 
-/* ── View toggle (cards / rows) ── */
+/* ── View toggle (list / timeline) ── */
 .view-toggle {
   display: flex;
   gap: 2px;
@@ -772,12 +772,16 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   background: transparent;
   border: none;
   border-radius: 5px;
-  padding: 5px 8px;
+  padding: 5px 12px;
   cursor: pointer;
   color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-he);
   transition: background .15s, color .15s
 }
 
