@@ -272,9 +272,15 @@ async function uploadFile(file) {
 
   try {
     showProgress(true, 'מתמלל...'); animateProgressSlow(15, 70);
-    const res = await fetch(`${API}/transcribe`, { method: 'POST', body: form });
+    // Attach the Supabase token so the backend can identify the user and
+    // charge credits. Without it the backend rejects the request (401).
+    const token = (typeof getAccessToken === 'function') ? await getAccessToken() : null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`${API}/transcribe`, { method: 'POST', body: form, headers });
     if (!res.ok) { const e = await res.json().catch(() => ({ detail: res.statusText })); throw new Error(e.detail); }
     const data = await res.json();
+    // Balance changed on the server - refresh the header chip.
+    if (typeof refreshCredits === 'function') refreshCredits();
     animateProgress(85, 92, 400); await sleep(400);
     uploadAbortController = null;
     const clearBtnOk = document.querySelector('[onclick="clearFileSelection()"]');

@@ -19,6 +19,12 @@ let currentCredits = null;    // integer balance, or null
 
 function isLoggedIn() { return !!currentUser; }
 
+// The current access token, for authenticating backend calls (or null).
+async function getAccessToken() {
+  const { data } = await sb.auth.getSession();
+  return data.session ? data.session.access_token : null;
+}
+
 // ── Sign in / out ────────────────────────────────────────────────
 // Sign in via a POPUP rather than a full-page redirect. A redirect reloads
 // the page and wipes in-memory state (like a file the user already picked);

@@ -31,7 +31,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=r"null|file://.*|http://localhost(:\d+)?",
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 UPLOAD_DIR = Path("uploads")
@@ -42,6 +42,14 @@ MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
 RATE_LIMIT_WINDOW   = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))
 FILE_TTL_SECONDS    = int(os.getenv("FILE_TTL_SECONDS", str(60 * 60 * 2)))
+
+# ── CREDITS / AUTH (Supabase) ─────────────────────────────────────────────────
+SUPABASE_URL          = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY  = os.getenv("SUPABASE_SERVICE_KEY", "")  # service_role - backend ONLY
+CREDITS_PER_MINUTE    = int(os.getenv("CREDITS_PER_MINUTE", "10"))
+# When true, requests without a valid user are rejected. Kept as a switch so
+# you can flip enforcement on/off without code changes during rollout.
+REQUIRE_AUTH          = os.getenv("REQUIRE_AUTH", "true").lower() == "true"
 
 _rate_store: dict = defaultdict(list)
 
@@ -314,6 +322,104 @@ def parse_numbered_lines(result_text: str, segments: list) -> list:
 def health():
     return {"status": "ok", "model": MODEL_SIZE}
 
+# ── CREDIT & AUTH HELPERS ─────────────────────────────────────────────────────
+def probe_duration_seconds(path: Path):
+    """Media duration via ffprobe (ships with ffmpeg). Reads metadata only -
+    fast even on big files. Returns float seconds, or None if undetermined."""
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error",
+             "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return None
+        return float(result.stdout.strip())
+    except Exception:
+        return None
+
+
+def credits_for_duration(duration_s: float) -> int:
+    """Cost in credits for a clip of this length.
+
+    ⚠️ SINGLE SOURCE OF TRUTH for pricing. Today it's a flat rate per minute,
+    rounded up to a whole minute. To move to dynamic pricing later (file size,
+    features used, etc.) change ONLY this function - the request flow calls it
+    and doesn't care how the number is produced.
+    """
+    import math
+    minutes = math.ceil(duration_s / 60.0)     # round up to a whole minute
+    return max(1, minutes) * CREDITS_PER_MINUTE
+
+
+async def verify_user(request: Request):
+    """Resolve the Supabase user from the Authorization: Bearer token.
+
+    We verify by asking Supabase '/auth/v1/user' who this token belongs to.
+    That call fails for forged/expired tokens, so a returned id is trustworthy -
+    the client cannot fake identity. Returns the user id (str), or None.
+    """
+    auth = request.headers.get("authorization") or request.headers.get("Authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        return None
+    token = auth.split(" ", 1)[1].strip()
+    if not SUPABASE_URL:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                f"{SUPABASE_URL}/auth/v1/user",
+                headers={"Authorization": f"Bearer {token}",
+                         "apikey": SUPABASE_SERVICE_KEY},
+            )
+        if r.status_code != 200:
+            return None
+        return r.json().get("id")
+    except Exception:
+        return None
+
+
+async def _rpc(fn: str, payload: dict):
+    """Call a Supabase Postgres function (RPC) with the service_role key."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/{fn}",
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+    return r
+
+
+async def deduct_credits(user_id: str, amount: int, video_id: str):
+    """Atomically deduct credits. Returns new balance, or None if insufficient."""
+    r = await _rpc("deduct_credits", {
+        "p_user_id": user_id, "p_amount": amount, "p_video_id": video_id,
+    })
+    if r.status_code != 200:
+        raise HTTPException(500, "שגיאה בבדיקת קרדיטים")
+    new_balance = r.json()
+    if new_balance is None or new_balance < 0:
+        return None                # insufficient / no such user
+    return new_balance
+
+
+async def refund_credits(user_id: str, amount: int, video_id: str):
+    """Best-effort refund when a job fails after deduction. Never raises."""
+    try:
+        await _rpc("refund_credits", {
+            "p_user_id": user_id, "p_amount": amount, "p_video_id": video_id,
+        })
+    except Exception as e:
+        # A failed refund must be visible - log it loudly for manual fixing.
+        api_log("refund", "error", "-", user_id, 0.0, str(e),
+                {"amount": amount, "video_id": video_id})
+
+
 @app.post("/transcribe")
 async def transcribe(
     request: Request,
@@ -344,6 +450,33 @@ async def transcribe(
 
     with open(input_path, "wb") as f:
         f.write(content)
+
+    # ── AUTH + CREDITS ────────────────────────────────────────────
+    # Verify who this is (Supabase token), price the job by duration, and
+    # deduct BEFORE calling Whisper. Deducting first is deliberate: it stops
+    # someone firing many parallel requests to get free transcriptions. If
+    # anything downstream fails, we refund (see the except blocks below).
+    user_id = await verify_user(request)
+    if REQUIRE_AUTH and not user_id:
+        cleanup_files(input_path)
+        raise HTTPException(401, "יש להתחבר כדי ליצור כתוביות")
+
+    charged = 0  # how many credits we took (for refund on failure)
+    if user_id:
+        duration_s = probe_duration_seconds(input_path)
+        if duration_s is None:
+            cleanup_files(input_path)
+            raise HTTPException(400, "לא ניתן לקרוא את אורך הקובץ")
+        cost = credits_for_duration(duration_s)
+        new_balance = await deduct_credits(user_id, cost, video_id)
+        if new_balance is None:
+            cleanup_files(input_path)
+            raise HTTPException(402, f"אין מספיק קרדיטים. נדרשים {cost} קרדיטים.")
+        charged = cost
+        api_log("credits", "ok", client_ip, user_id, 0.0, extra={
+            "video_id": video_id, "charged": cost,
+            "duration_min": round(duration_s / 60.0, 2), "balance": new_balance,
+        })
 
     t_whisper = time.time()
     try:
@@ -389,6 +522,8 @@ async def transcribe(
             api_log("whisper", "error", client_ip, file.filename, dur,
                     f"HTTP {resp.status_code}: {resp.text[:400]}",
                     {"size_mb": file_size_mb})
+            if charged:
+                await refund_credits(user_id, charged, video_id)
             raise HTTPException(500, f"שגיאת Whisper API: {resp.text[:300]}")
         result = resp.json()
         dur = time.time() - t_whisper
@@ -403,6 +538,8 @@ async def transcribe(
         dur = time.time() - t_whisper
         api_log("whisper", "error", client_ip, file.filename, dur, str(e),
                 {"size_mb": getattr(input_path.stat(), "st_size", 0) / 1024 / 1024})
+        if charged:
+            await refund_credits(user_id, charged, video_id)
         cleanup_files(input_path)
         raise HTTPException(500, f"שגיאת תמלול: {str(e)}")
 
