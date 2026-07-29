@@ -343,14 +343,22 @@ def probe_duration_seconds(path: Path):
 def credits_for_duration(duration_s: float) -> int:
     """Cost in credits for a clip of this length.
 
-    ⚠️ SINGLE SOURCE OF TRUTH for pricing. Today it's a flat rate per minute,
-    rounded up to a whole minute. To move to dynamic pricing later (file size,
-    features used, etc.) change ONLY this function - the request flow calls it
-    and doesn't care how the number is produced.
+    ⚠️ SINGLE SOURCE OF TRUTH for pricing. To move to dynamic pricing later
+    (file size, features used, etc.) change ONLY this function - the request
+    flow calls it and doesn't care how the number is produced.
+
+    Billing is per 6-second unit (0.1 min), rounded UP to the next unit, at a
+    rate of CREDITS_PER_MINUTE per full minute. 10 units = 1 minute, so with
+    CREDITS_PER_MINUTE=10 one credit buys 6 seconds and the math stays clean.
+    Rounding UP (never down) matters: rounding down would let very short clips
+    cost 0 credits - i.e. free transcription that still costs us the Whisper
+    call. A 67s clip -> ceil(67/6)=12 units -> 12 credits.
     """
     import math
-    minutes = math.ceil(duration_s / 60.0)     # round up to a whole minute
-    return max(1, minutes) * CREDITS_PER_MINUTE
+    UNIT_SECONDS = 6.0                                  # 0.1 minute
+    credit_per_unit = CREDITS_PER_MINUTE / 10.0         # 10 units per minute
+    units = math.ceil(duration_s / UNIT_SECONDS)
+    return max(1, round(units * credit_per_unit))
 
 
 async def verify_user(request: Request):
