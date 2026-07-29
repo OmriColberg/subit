@@ -858,7 +858,7 @@ header {
 }
 
 .srt-list {
-  max-height: 290px;
+  max-height: 200px;
   overflow-y: auto
 }
 

@@ -20,12 +20,37 @@ let currentCredits = null;    // integer balance, or null
 function isLoggedIn() { return !!currentUser; }
 
 // ── Sign in / out ────────────────────────────────────────────────
+// Sign in via a POPUP rather than a full-page redirect. A redirect reloads
+// the page and wipes in-memory state (like a file the user already picked);
+// a popup keeps the main page alive, so the file survives. When the popup
+// finishes, Supabase broadcasts the new session to this tab and
+// onAuthStateChange fires here - we just close the popup.
+let _authPopup = null;
 async function signInWithGoogle() {
-  const { error } = await sb.auth.signInWithOAuth({
+  const { data, error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin + window.location.pathname },
+    options: {
+      redirectTo: window.location.origin + window.location.pathname,
+      skipBrowserRedirect: true,   // give us the URL instead of navigating
+    },
   });
-  if (error) { console.error(error); toast('error', 'ההתחברות נכשלה, נסה שוב'); }
+  if (error || !data || !data.url) {
+    console.error(error);
+    toast('error', 'ההתחברות נכשלה, נסה שוב');
+    return;
+  }
+  // Center a small popup window
+  const w = 480, h = 640;
+  const left = window.screenX + (window.outerWidth - w) / 2;
+  const top  = window.screenY + (window.outerHeight - h) / 2;
+  _authPopup = window.open(
+    data.url, 'subit-google-login',
+    `width=${w},height=${h},left=${left},top=${top}`
+  );
+  if (!_authPopup) {
+    // popup blocked - fall back to a normal redirect so login still works
+    window.location.href = data.url;
+  }
 }
 
 async function signOut() {
@@ -102,6 +127,11 @@ document.addEventListener('click', (e) => {
 // ── React to auth changes (login, logout, token refresh, page load) ──
 sb.auth.onAuthStateChange((event, session) => {
   currentUser = session ? session.user : null;
+  // If a login popup is open, close it now that we have the session
+  if (currentUser && _authPopup && !_authPopup.closed) {
+    _authPopup.close();
+    _authPopup = null;
+  }
   renderAuthUI();
   if (currentUser) loadCredits();
   else currentCredits = null;
