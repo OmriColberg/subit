@@ -352,12 +352,21 @@ def credits_for_duration(duration_s: float) -> int:
     CREDITS_PER_MINUTE=10 one credit buys 6 seconds and the math stays clean.
     Rounding UP (never down) matters: rounding down would let very short clips
     cost 0 credits - i.e. free transcription that still costs us the Whisper
-    call. A 67s clip -> ceil(67/6)=12 units -> 12 credits.
+    call.
+
+    GRACE: ffprobe usually reports a hair MORE than the round number (a "42s"
+    clip is really 42.3s because of the container/last frame), which would push
+    it over a unit boundary and feel stingy. We shave a small grace off the
+    duration before rounding so those fractions don't cost an extra unit. It's
+    far smaller than a unit, so it can't be exploited for free transcription.
+    Example: 42.4s - 0.5 = 41.9 -> ceil(41.9/6)=7 units -> 7 credits.
     """
     import math
     UNIT_SECONDS = 6.0                                  # 0.1 minute
+    GRACE_SECONDS = 0.5                                 # forgive sub-second overruns
     credit_per_unit = CREDITS_PER_MINUTE / 10.0         # 10 units per minute
-    units = math.ceil(duration_s / UNIT_SECONDS)
+    effective = max(0.0, duration_s - GRACE_SECONDS)
+    units = math.ceil(effective / UNIT_SECONDS)
     return max(1, round(units * credit_per_unit))
 
 
