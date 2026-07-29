@@ -232,6 +232,17 @@ function stopTimer() {
 }
 
 // ── START TRANSCRIPTION (called by button) ────────────────────────
+// Click handler for the primary button - gates on auth before transcribing.
+// This is UX only; real credit enforcement lives in the backend (step ג).
+function onStartClick() {
+  if (typeof isLoggedIn === 'function' && !isLoggedIn()) {
+    toast('info', 'התחבר עם Google כדי ליצור כתוביות');
+    if (typeof signInWithGoogle === 'function') signInWithGoogle();
+    return;
+  }
+  startTranscription();
+}
+
 function startTranscription() {
   if (!selectedFile) return;
   // Hide start button, show timer
