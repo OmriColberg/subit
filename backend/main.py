@@ -401,6 +401,10 @@ async def deduct_credits(user_id: str, amount: int, video_id: str):
         "p_user_id": user_id, "p_amount": amount, "p_video_id": video_id,
     })
     if r.status_code != 200:
+        # Surface the real Supabase error so we can see WHY it failed.
+        api_log("deduct", "error", "-", user_id, 0.0,
+                f"HTTP {r.status_code}: {r.text[:400]}",
+                {"video_id": video_id, "amount": amount})
         raise HTTPException(500, "שגיאה בבדיקת קרדיטים")
     new_balance = r.json()
     if new_balance is None or new_balance < 0:
