@@ -143,9 +143,9 @@ header {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 5px 6px 5px 12px;
+  border-radius: 20px;
   background: var(--surface2);
   border: 1px solid var(--border2);
   cursor: pointer;
@@ -153,17 +153,6 @@ header {
   transition: all .2s;
 }
 .user-chip:hover { border-color: var(--accent); }
-.user-credits {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--accent);
-  white-space: nowrap;
-}
-.user-credits::after {
-  content: ' ק\''; /* credits abbreviation */
-  font-weight: 400;
-  color: var(--muted);
-}
 .user-email {
   font-size: 12px;
   color: var(--muted);
@@ -171,6 +160,38 @@ header {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Credits shown as a distinct pill with a coin glyph, so the balance reads
+   as its own badge rather than blending into the email text. */
+.user-credits {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(245,66,66,.16), rgba(245,66,66,.08));
+  border: 1px solid rgba(245, 66, 66, .3);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  white-space: nowrap;
+  line-height: 1;
+}
+.user-credits::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffd66b, #f5a623 70%);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.4);
+  flex-shrink: 0;
+}
+.user-credits::after {
+  content: ' קרדיטים';
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--accent);
+  opacity: .75;
 }
 .user-menu {
   position: absolute;

@@ -75,12 +75,16 @@ function renderAuthUI() {
   updateStartButton();
 }
 
-// Relabel the "צור לי כתוביות" button based on auth state
+// Relabel the "צור לי כתוביות" button based on auth state.
+// Called from renderAuthUI, and also re-asserted after full page load because
+// app.js runs lucide.createIcons() at its end, which can re-walk the button DOM.
 function updateStartButton() {
   const label = document.getElementById('start-btn-label');
   if (!label) return;
   label.textContent = currentUser ? 'צור לי כתוביות' : 'התחבר כדי ליצור כתוביות';
 }
+// Re-assert once everything (including app.js) has finished loading.
+window.addEventListener('load', updateStartButton);
 
 function toggleUserMenu() {
   const m = document.getElementById('user-menu');
