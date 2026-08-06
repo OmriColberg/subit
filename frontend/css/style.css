@@ -1181,6 +1181,23 @@ header {
   background-position: center
 }
 
+/* Waveform overlay — sits on top of the filmstrip, ignores pointer events so
+   clicking the strip still seeks. Auto-scales with zoom (SVG width:100%). */
+.tl-wave {
+  position: absolute;
+  top: 64px;
+  right: 0;
+  left: 0;
+  height: 44px;
+  pointer-events: none;
+  z-index: 6;
+}
+.tl-wave svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .tl-playhead {
   position: absolute;
   top: 0;

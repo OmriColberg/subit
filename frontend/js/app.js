@@ -114,6 +114,16 @@ document.getElementById('file-input').addEventListener('change', e => {
 // File selection - show estimate box with start button
 const MAX_FILE_MB = 500;
 
+// Estimate only — the backend re-measures with ffprobe and is the source of
+// truth at charge time. Mirrors backend credits_for_duration (CREDITS_PER_MINUTE=10).
+function creditsForDuration(durationSec) {
+  const CREDITS_PER_MINUTE = 10, UNIT = 6.0, GRACE = 0.5;
+  const perUnit = CREDITS_PER_MINUTE / 10;
+  const eff = Math.max(0, durationSec - GRACE);
+  const units = Math.ceil(eff / UNIT);
+  return Math.max(1, Math.round(units * perUnit));
+}
+
 function handleFileSelected(file) {
   const sizeMB = file.size / 1024 / 1024;
   if (sizeMB > MAX_FILE_MB) {
@@ -138,6 +148,7 @@ function handleFileSelected(file) {
   document.getElementById('est-size').textContent = sizeMB.toFixed(1) + ' MB';
   document.getElementById('est-time').textContent = '-';
   document.getElementById('est-duration').textContent = '-';
+  document.getElementById('est-credits').textContent = '-';
   document.getElementById('estimate-box').style.display = 'block';
   document.getElementById('start-section').style.display = 'block';
   document.getElementById('timer-section').style.display = 'none';
@@ -160,6 +171,7 @@ function handleFileSelected(file) {
     const estMins = Math.max(1, Math.round(estSecs / 60));
     document.getElementById('est-time').textContent =
       estMins <= 1 ? '1–2 דקות' : `${estMins}–${estMins + 1} דקות`;
+    document.getElementById('est-credits').textContent = creditsForDuration(dur) + ' קרדיט';
   }, { once: true });
 }
 
@@ -956,7 +968,8 @@ function refreshVideoTrack() {
 // block writes SRT strings back through secToSrt, then renderSRTList() keeps
 // the list, the WebVTT track, and this view in sync.
 let tlPps = 0;              // pixels per second (0 = not built yet)
-let tlSelectedIdx = null;   // which block is selected/being edited
+let tlSelectedIdx = null;   // primary selected block (drives the inline editor)
+let tlMulti = new Set();    // all selected indices (multi-select via Ctrl/Cmd+click)
 let tlThumbs = [];          // [{t, url}] cached per video
 let tlThumbsForBlob = null; // which blob the cache belongs to
 let tlWired = false;        // one-time video event wiring
@@ -989,6 +1002,7 @@ function buildTimeline() {
   inner.style.width = Math.ceil(dur * tlPps) + 'px';
   tlRenderRuler(dur);
   tlRenderThumbs(dur);
+  tlRenderWave(dur);
   renderTimelineSubs();
   tlUpdatePlayhead();
   tlWireVideo();
@@ -1061,6 +1075,50 @@ async function tlRenderThumbs(dur) {
   }
 }
 
+// ── Waveform overlay (audio peaks drawn over the filmstrip) ──
+let tlWavePeaks = null, tlWaveForBlob = null;
+
+async function tlComputeWavePeaks(blobUrl, buckets) {
+  const buf = await (await fetch(blobUrl)).arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  const audio = await ac.decodeAudioData(buf);
+  const ch = audio.getChannelData(0);
+  const block = Math.max(1, Math.floor(ch.length / buckets));
+  const peaks = new Array(buckets).fill(0);
+  for (let i = 0; i < buckets; i++) {
+    let max = 0; const start = i * block;
+    for (let j = 0; j < block; j++) { const a = Math.abs(ch[start + j] || 0); if (a > max) max = a; }
+    peaks[i] = max;
+  }
+  ac.close();
+  const peak = Math.max(...peaks) || 1;
+  return peaks.map(p => p / peak);
+}
+
+function tlDrawWave() {
+  const host = document.getElementById('tl-wave');
+  if (!host) return;
+  if (!tlWavePeaks) { host.innerHTML = ''; return; }
+  const N = tlWavePeaks.length, H = 100, mid = H / 2;
+  let d = '';
+  for (let x = 0; x < N; x++) { const h = Math.max(tlWavePeaks[N - 1 - x] * mid, 0.4); d += (x ? 'L' : 'M') + x + ' ' + (mid - h).toFixed(1) + ' '; }
+  for (let x = N - 1; x >= 0; x--) { const h = Math.max(tlWavePeaks[N - 1 - x] * mid, 0.4); d += 'L' + x + ' ' + (mid + h).toFixed(1) + ' '; }
+  d += 'Z';
+  host.innerHTML = `<svg viewBox="0 0 ${N} ${H}" preserveAspectRatio="none"><path d="${d}" fill="var(--accent)" fill-opacity="0.5"/></svg>`;
+}
+
+async function tlRenderWave(dur) {
+  if (tlWaveForBlob === state.videoBlobUrl && tlWavePeaks) { tlDrawWave(); return; }
+  const host = document.getElementById('tl-wave');
+  if (!state.videoBlobUrl) { if (host) host.innerHTML = ''; return; }
+  tlWavePeaks = null; tlWaveForBlob = state.videoBlobUrl;
+  try {
+    tlWavePeaks = await tlComputeWavePeaks(state.videoBlobUrl, Math.min(1200, Math.max(200, Math.floor(dur * 8))));
+    if (editorView === 'timeline') tlDrawWave();
+  } catch { if (host) host.innerHTML = ''; }
+}
+
 // ── Subtitle blocks ──
 function renderTimelineSubs() {
   if (editorView !== 'timeline' || !tlPps) return;
@@ -1068,7 +1126,7 @@ function renderTimelineSubs() {
   wrap.innerHTML = state.segments.map((s, i) => {
     const st = srtToSec(s.start), en = srtToSec(s.end);
     const w = Math.max((en - st) * tlPps, 14);
-    return `<div class="tl-block${i === tlSelectedIdx ? ' selected' : ''}" data-tlidx="${i}"
+    return `<div class="tl-block${(i === tlSelectedIdx || tlMulti.has(i)) ? ' selected' : ''}" data-tlidx="${i}"
       style="right:${st * tlPps}px;width:${w}px" title="${(s.text || '').replace(/"/g, '&quot;')}">
       <div class="tl-handle h-start" data-mode="start"></div>
       <span style="pointer-events:none">${s.text || '(ריק)'}</span>
@@ -1078,14 +1136,44 @@ function renderTimelineSubs() {
   tlSyncEditor();
 }
 
+let _tlPlayIdx = -1;
+function tlTrackActiveDuringPlay() {
+  if (editorView !== 'timeline' || !tlPps) return;
+  const v = document.getElementById('video-player');
+  if (!v || !state.segments.length) return;
+  const t = v.currentTime;
+  const idx = state.segments.findIndex(s => t >= srtToSec(s.start) && t <= srtToSec(s.end) + 0.05);
+  if (idx === -1 || idx === tlSelectedIdx) { _tlPlayIdx = idx; return; }
+  _tlPlayIdx = idx;
+  tlSelectedIdx = idx;
+  if (typeof tlMulti !== 'undefined' && tlMulti instanceof Set) { tlMulti.clear(); tlMulti.add(idx); }
+  document.querySelectorAll('#tl-subs .tl-block').forEach(b => {
+    b.classList.toggle('selected', +b.dataset.tlidx === idx);
+  });
+  tlSyncEditor();
+}
+
 function tlSelect(idx, seek = true) {
   tlSelectedIdx = idx;
+  tlMulti = new Set([idx]);          // plain select collapses any multi-selection
   renderTimelineSubs();
   const seg = state.segments[idx];
   if (seek && seg) {
     const v = document.getElementById('video-player');
     if (v) v.currentTime = srtToSec(seg.start) + 0.01;
   }
+}
+
+// Ctrl/Cmd+click: add or remove a block from the multi-selection (no seek)
+function tlToggleMulti(idx) {
+  if (tlMulti.has(idx)) {
+    tlMulti.delete(idx);
+    if (tlSelectedIdx === idx) tlSelectedIdx = tlMulti.size ? [...tlMulti].pop() : null;
+  } else {
+    tlMulti.add(idx);
+    tlSelectedIdx = idx;
+  }
+  renderTimelineSubs();
 }
 
 // ── Inline editor under the strip ──
@@ -1150,10 +1238,30 @@ document.getElementById('tl-subs').addEventListener('pointerdown', (e) => {
   const idx = +block.dataset.tlidx;
   const mode = e.target.dataset.mode || 'move'; // 'start' | 'end' | 'move'
   const seg = state.segments[idx];
-  tlDrag = {
-    idx, mode, startX: e.clientX, moved: false,
-    origStart: srtToSec(seg.start), origEnd: srtToSec(seg.end),
-  };
+
+  // Body-drag of a block that's part of a multi-selection → move the whole group.
+  if (mode === 'move' && tlMulti.size > 1 && tlMulti.has(idx)) {
+    const sel = new Set(tlMulti);
+    const group = [...tlMulti].sort((a, b) => a - b).map(i => ({
+      i, s: srtToSec(state.segments[i].start), e: srtToSec(state.segments[i].end),
+    }));
+    // widest rigid shift that keeps each block inside its non-selected neighbors + [0,dur]
+    let dtMin = -Infinity, dtMax = Infinity;
+    for (const it of group) {
+      let lo = 0;
+      for (let k = it.i - 1; k >= 0; k--) { if (!sel.has(k)) { lo = srtToSec(state.segments[k].end); break; } }
+      let hi = tlDuration() || 1e9;
+      for (let k = it.i + 1; k < state.segments.length; k++) { if (!sel.has(k)) { hi = srtToSec(state.segments[k].start); break; } }
+      dtMin = Math.max(dtMin, lo - it.s);
+      dtMax = Math.min(dtMax, hi - it.e);
+    }
+    tlDrag = { idx, group, dtMin, dtMax, startX: e.clientX, moved: false };
+  } else {
+    tlDrag = {
+      idx, mode, startX: e.clientX, moved: false,
+      origStart: srtToSec(seg.start), origEnd: srtToSec(seg.end),
+    };
+  }
   block.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
@@ -1163,6 +1271,19 @@ document.getElementById('tl-subs').addEventListener('pointermove', (e) => {
   const dt = -(e.clientX - tlDrag.startX) / tlPps;
   if (!tlDrag.moved && Math.abs(dt * tlPps) < 3) return; // click, not drag (yet)
   if (!tlDrag.moved) { pushUndo(); tlDrag.moved = true; }
+
+  // group move: translate all selected blocks rigidly, clamped to the allowed range
+  if (tlDrag.group) {
+    const gdt = Math.min(Math.max(dt, tlDrag.dtMin), tlDrag.dtMax);
+    for (const it of tlDrag.group) {
+      const s2 = state.segments[it.i];
+      s2.start = secToSrt(it.s + gdt); s2.end = secToSrt(it.e + gdt);
+      const b = document.querySelector(`.tl-block[data-tlidx="${it.i}"]`);
+      if (b) { b.style.right = ((it.s + gdt) * tlPps) + 'px'; b.style.width = Math.max((it.e - it.s) * tlPps, 14) + 'px'; }
+    }
+    tlSyncEditor();
+    return;
+  }
 
   const seg = state.segments[tlDrag.idx];
   const d = tlDrag;
@@ -1190,13 +1311,15 @@ document.getElementById('tl-subs').addEventListener('pointermove', (e) => {
 });
 document.getElementById('tl-subs').addEventListener('pointerup', (e) => {
   if (!tlDrag) return;
-  const wasDrag = tlDrag.moved, idx = tlDrag.idx;
+  const wasDrag = tlDrag.moved, idx = tlDrag.idx, wasGroup = !!tlDrag.group;
   tlDrag = null;
   if (wasDrag) {
     renderSRTList(); syncPlainText(); scheduleAutoSave();
-    tlSelect(idx, false);
+    if (!wasGroup) tlSelect(idx, false); // group drag keeps the multi-selection
+  } else if (e.ctrlKey || e.metaKey) {
+    tlToggleMulti(idx);                  // Ctrl/Cmd+click: add/remove from selection
   } else {
-    tlSelect(idx, true); // plain click: select + jump the video there
+    tlSelect(idx, true);                 // plain click: select + jump the video there
   }
 });
 
@@ -1257,6 +1380,7 @@ function tlWireVideo() {
   // smooth playhead while playing (timeupdate alone fires only ~4x/sec)
   const loop = () => {
     tlUpdatePlayhead(true); // autoscroll to follow playback
+    tlTrackActiveDuringPlay(); // keep the played subtitle selected + in the editor
     if (!v.paused && !v.ended) requestAnimationFrame(loop);
   };
   v.addEventListener('play',  () => { requestAnimationFrame(loop); tlSyncPlayIcon(); });

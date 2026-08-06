@@ -114,6 +114,10 @@
         <span class="estimate-label">זמן עיבוד משוער</span>
         <span class="estimate-value" id="est-time">-</span>
       </div>
+      <div class="estimate-row">
+        <span class="estimate-label">עלות משוערת</span>
+        <span class="estimate-value" id="est-credits" style="color:var(--accent);font-weight:600">-</span>
+      </div>
       <!-- Start button (before transcription) -->
       <div id="start-section" style="margin-top:16px">
         <button class="btn btn-primary" id="start-btn" onclick="onStartClick()"
@@ -268,13 +272,14 @@
             </button>
             <button class="tl-zoom-btn" onclick="tlZoom(1/1.5)" title="הקטן">−</button>
             <button class="tl-zoom-btn" onclick="tlZoom(1.5)" title="הגדל">+</button>
-            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | גרור את הסמן להזזה בסרטון</span>
+            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | Ctrl+לחיצה לבחירה מרובה | גרור את הסמן להזזה בסרטון</span>
           </div>
           <div class="tl-scroll" id="tl-scroll">
             <div class="tl-inner" id="tl-inner">
               <div class="tl-ruler" id="tl-ruler"></div>
               <div class="tl-subs" id="tl-subs"></div>
               <div class="tl-film" id="tl-film"></div>
+              <div class="tl-wave" id="tl-wave"></div>
               <div class="tl-playhead" id="tl-playhead"></div>
             </div>
           </div>
