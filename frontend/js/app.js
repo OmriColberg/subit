@@ -71,7 +71,7 @@ applyTheme();
 // ── EDITOR VIEW: rows (default) / timeline ────────────────────────
 // The list view always uses the .view-rows layout (one line per subtitle).
 // renderSRTList() output is untouched - the class just re-flows it via CSS.
-let editorView = localStorage.getItem('editorView') === 'timeline' ? 'timeline' : 'rows';
+let editorView = localStorage.getItem('editorView') !== 'rows' ? 'timeline' : 'rows';
 function setEditorView(view) {
   editorView = view;
   const isTl = view === 'timeline';
@@ -465,6 +465,7 @@ function deleteSegmentAt(i) {
   state.segments.splice(i, 1);
   reindexSegments();
   renderSRTList(); syncPlainText(); persistSRT(); updateUndoBtn();
+  renderTimelineSubs();
 }
 
 // ── REINDEX ───────────────────────────────────────────────────────
@@ -1105,7 +1106,7 @@ function tlDrawWave() {
   for (let x = 0; x < N; x++) { const h = Math.max(tlWavePeaks[N - 1 - x] * mid, 0.4); d += (x ? 'L' : 'M') + x + ' ' + (mid - h).toFixed(1) + ' '; }
   for (let x = N - 1; x >= 0; x--) { const h = Math.max(tlWavePeaks[N - 1 - x] * mid, 0.4); d += 'L' + x + ' ' + (mid + h).toFixed(1) + ' '; }
   d += 'Z';
-  host.innerHTML = `<svg viewBox="0 0 ${N} ${H}" preserveAspectRatio="none"><path d="${d}" fill="var(--accent)" fill-opacity="0.5"/></svg>`;
+  host.innerHTML = `<svg viewBox="0 0 ${N} ${H}" preserveAspectRatio="none"><path d="${d}" fill="rgba(255,255,255,0.75)"/></svg>`;
 }
 
 async function tlRenderWave(dur) {
@@ -1120,6 +1121,34 @@ async function tlRenderWave(dur) {
 }
 
 // ── Subtitle blocks ──
+function tlDeleteSelected() {
+  if (tlSelectedIdx == null) return;
+  const i = tlSelectedIdx;
+  tlSelectedIdx = null;
+  tlMulti = new Set();
+  deleteSegmentAt(i);
+  tlSyncEditor();
+}
+
+function insertSegmentAtTime(t) {
+  if (!tlPps) return;
+  const segs = state.segments;
+  const overlaps = segs.some(s => t >= srtToSec(s.start) && t <= srtToSec(s.end));
+  if (overlaps) { toast('error', 'יש כבר כתובית בנקודה זו'); return; }
+  let insertAt = segs.findIndex(s => srtToSec(s.start) > t);
+  if (insertAt === -1) insertAt = segs.length;
+  const next = segs[insertAt];
+  const endSec = next ? Math.min(t + 2, srtToSec(next.start)) : t + 2;
+  if (endSec - t < 0.3) { toast('error', 'אין מספיק מקום להוספת כתובית'); return; }
+  pushUndo();
+  segs.splice(insertAt, 0, { index: 0, start: secToSrt(t), end: secToSrt(endSec), text: '' });
+  reindexSegments();
+  renderSRTList(); syncPlainText(); persistSRT(); updateUndoBtn();
+  renderTimelineSubs();
+  tlSelect(insertAt, false);
+  setTimeout(() => document.getElementById('tl-edit-text')?.focus(), 50);
+}
+
 function renderTimelineSubs() {
   if (editorView !== 'timeline' || !tlPps) return;
   const wrap = document.getElementById('tl-subs');
@@ -1333,6 +1362,19 @@ function tlSeekFromEvent(e) {
 }
 document.getElementById('tl-film').addEventListener('click', tlSeekFromEvent);
 document.getElementById('tl-ruler').addEventListener('click', tlSeekFromEvent);
+
+// Double-click on the filmstrip or empty sub-track area → add a new subtitle there
+function tlInsertAtClick(e) {
+  const inner = document.getElementById('tl-inner');
+  const rect = inner.getBoundingClientRect();
+  const t = (rect.right - e.clientX) / tlPps;
+  insertSegmentAtTime(Math.max(0, t));
+}
+document.getElementById('tl-film').addEventListener('dblclick', tlInsertAtClick);
+document.getElementById('tl-subs').addEventListener('dblclick', (e) => {
+  if (e.target.closest('.tl-block')) return; // only on empty space
+  tlInsertAtClick(e);
+});
 
 // ── Playhead ──
 function tlUpdatePlayhead(autoScroll = false) {

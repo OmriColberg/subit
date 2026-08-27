@@ -267,7 +267,7 @@
             </button>
             <button class="tl-zoom-btn" onclick="tlZoom(1/1.5)" title="הקטן">−</button>
             <button class="tl-zoom-btn" onclick="tlZoom(1.5)" title="הגדל">+</button>
-            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | Ctrl+לחיצה לבחירה מרובה | גרור את הסמן להזזה בסרטון</span>
+            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | לחץ פעמיים על הסרטון להוספת כתובית | Ctrl+לחיצה לבחירה מרובה</span>
           </div>
           <div class="tl-scroll" id="tl-scroll">
             <div class="tl-inner" id="tl-inner">
@@ -284,6 +284,7 @@
             <span style="color:var(--muted)">←</span>
             <input class="time-input" id="tl-edit-end" title="סיום" onblur="tlEditorTimeChanged('end')" onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}"/>
             <input class="tl-edit-text" id="tl-edit-text" placeholder="טקסט הכתובית" oninput="tlEditorTextChanged()"/>
+            <button class="tl-delete-btn" onclick="tlDeleteSelected()" title="מחק כתובית זו">✕</button>
           </div>
         </div>
       </div>
