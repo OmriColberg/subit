@@ -46,6 +46,10 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   await ffmpeg.writeFile(inputName, videoData);
   await ffmpeg.writeFile(srtName, buildSRTString(segments));
 
+  // libass (used by the subtitles filter) needs at least one font in the FS
+  // to render text; without fonts the subtitle layer is invisible.
+  await ensureFontInFS(ffmpeg);
+
   onProgress(25, 'צורב כתוביות...');
 
   // Build the subtitles filter string
@@ -73,6 +77,7 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   try { await ffmpeg.deleteFile(inputName); } catch {}
   try { await ffmpeg.deleteFile(outputName); } catch {}
   try { await ffmpeg.deleteFile(srtName); } catch {}
+  try { await ffmpeg.deleteFile('/fonts/DejaVuSans.ttf'); } catch {}
 
   return new Blob([outData.buffer], { type: 'video/mp4' });
 }
@@ -116,6 +121,17 @@ function loadScript(src) {
     s.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(s);
   });
+}
+
+async function ensureFontInFS(ffmpeg) {
+  // libass requires at least one font in the virtual FS to render subtitle text.
+  // We self-host DejaVuSans.ttf (Hebrew-capable) and write it to /fonts/ each run.
+  try {
+    await ffmpeg.createDir('/fonts');
+  } catch {}
+  const resp = await fetch('/js/vendor/DejaVuSans.ttf');
+  const data = new Uint8Array(await resp.arrayBuffer());
+  await ffmpeg.writeFile('/fonts/DejaVuSans.ttf', data);
 }
 
 function buildSRTString(segments) {
@@ -165,7 +181,7 @@ function buildSubtitlesFilter(srtPath, style) {
   const backColor = style.bgOpacity > 0 ? `&H${bgAlpha}000000` : '&H00000000';
 
   const force_style = [
-    `FontName=${style.font || 'Arial'}`,
+    `FontName=DejaVu Sans`,
     `FontSize=${fontSize}`,
     `PrimaryColour=${primaryColor}`,
     `OutlineColour=${outlineColor}`,
@@ -180,5 +196,6 @@ function buildSubtitlesFilter(srtPath, style) {
 
   // Escape the path for ffmpeg filter (colons must be escaped)
   const escapedPath = srtPath.replace(/:/g, '\\:');
-  return `subtitles=${escapedPath}:force_style='${force_style}'`;
+  // fontsdir points to where we wrote DejaVuSans.ttf in the virtual FS
+  return `subtitles=${escapedPath}:fontsdir=/fonts:force_style='${force_style}'`;
 }
