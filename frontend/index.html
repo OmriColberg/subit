@@ -267,7 +267,11 @@
             </button>
             <button class="tl-zoom-btn" onclick="tlZoom(1/1.5)" title="הקטן">−</button>
             <button class="tl-zoom-btn" onclick="tlZoom(1.5)" title="הגדל">+</button>
-            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | לחץ פעמיים על הסרטון להוספת כתובית | Ctrl+לחיצה לבחירה מרובה</span>
+            <button class="tl-add-btn" onclick="tlAddAtPlayhead()" title="הוסף כתובית בנקודת הנגינה הנוכחית">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              כתובית
+            </button>
+            <span class="tl-hint">גרור כתובית להזזה | גרור קצוות לשינוי אורך | Ctrl+לחיצה לבחירה מרובה</span>
           </div>
           <div class="tl-scroll" id="tl-scroll">
             <div class="tl-inner" id="tl-inner">
