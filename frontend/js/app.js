@@ -1363,7 +1363,14 @@ function tlSeekFromEvent(e) {
 document.getElementById('tl-film').addEventListener('click', tlSeekFromEvent);
 document.getElementById('tl-ruler').addEventListener('click', tlSeekFromEvent);
 
-// Double-click on the filmstrip or empty sub-track area → add a new subtitle there
+// Primary: + button inserts at the current playhead position
+function tlAddAtPlayhead() {
+  const v = document.getElementById('video-player');
+  const t = v ? v.currentTime : 0;
+  insertSegmentAtTime(t);
+}
+
+// Bonus shortcut: double-click on filmstrip or empty sub-track area
 function tlInsertAtClick(e) {
   const inner = document.getElementById('tl-inner');
   const rect = inner.getBoundingClientRect();
@@ -1372,7 +1379,7 @@ function tlInsertAtClick(e) {
 }
 document.getElementById('tl-film').addEventListener('dblclick', tlInsertAtClick);
 document.getElementById('tl-subs').addEventListener('dblclick', (e) => {
-  if (e.target.closest('.tl-block')) return; // only on empty space
+  if (e.target.closest('.tl-block')) return;
   tlInsertAtClick(e);
 });
 
