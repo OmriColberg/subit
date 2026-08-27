@@ -1575,38 +1575,71 @@ function updateBurnPreview() {
   if (pm.transform) el.style.transform = pm.transform;
 }
 
-// ── BURN ──────────────────────────────────────────────────────────
+// ── BURN (ffmpeg.wasm — runs entirely in the browser) ─────────────
 async function burnSubtitles() {
-  if (!state.videoId) return;
-  document.getElementById('burn-btn').disabled = true;
-  document.getElementById('burn-progress').style.display = 'block';
-  animateBurnProgress();
-  const posRaw = document.getElementById('burn-position').value;
-  const posMap = {
-    'very-bottom': 'very-bottom', 'bottom': 'bottom', 'center-bottom': 'center-bottom',
-    'center': 'center', 'center-top': 'center-top', 'top': 'top', 'very-top': 'very-top'
+  if (!state.videoBlobUrl || !state.segments.length) {
+    toast('error', 'אין סרטון או כתוביות לצריבה');
+    return;
+  }
+
+  // Warn for large files (>500MB or >30 min estimate) — memory pressure
+  const videoEl = document.getElementById('video-player');
+  const durMin = videoEl?.duration ? videoEl.duration / 60 : 0;
+  if (durMin > 20) {
+    const ok = confirm(`הסרטון ארוך (${Math.round(durMin)} דקות). הצריבה תתבצע בדפדפן ועלולה לקחת כמה דקות ולצרוך זיכרון רב. להמשיך?`);
+    if (!ok) return;
+  }
+
+  const btn = document.getElementById('burn-btn');
+  const progressEl = document.getElementById('burn-progress');
+  const bar = document.getElementById('burn-bar');
+  const label = progressEl?.querySelector('.progress-status span');
+
+  btn.disabled = true;
+  progressEl.style.display = 'block';
+
+  const onProgress = (pct, msg) => {
+    if (bar) bar.style.width = pct + '%';
+    if (label) label.textContent = msg || 'צורב כתוביות...';
   };
-  const styleVal = document.getElementById('burn-style')?.value || 'normal';
-  const bgOp = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
-  const payload = {
-    video_id: state.videoId, srt_lines: state.segments,
-    font_name: document.getElementById('burn-font').value,
-    font_size: parseInt(document.getElementById('burn-fontsize').value),
-    font_color: document.getElementById('burn-color').value,
-    outline_color: document.getElementById('burn-outline').value,
-    position: posMap[posRaw] || 'bottom',
-    font_style: styleVal,
-    bg_opacity: bgOp,
+
+  const style = {
+    font: document.getElementById('burn-font')?.value || 'Arial',
+    fontSize: parseInt(document.getElementById('burn-fontsize')?.value || 24),
+    color: document.getElementById('burn-color')?.value || 'white',
+    outline: document.getElementById('burn-outline')?.value || 'black',
+    position: document.getElementById('burn-position')?.value || 'bottom',
+    fontStyle: document.getElementById('burn-style')?.value || 'normal',
+    bgOpacity: parseInt(document.getElementById('burn-bg-opacity')?.value || 0),
   };
+
   try {
-    const res = await fetch(`${API}/burn`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.detail || 'שגיאה'); }
-    const blob = await res.blob(); const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `עם_כתוביות_${state.filename || 'video.mp4'}`;
-    a.click(); URL.revokeObjectURL(url);
-    toast('success', 'הוידאו עם כתוביות הורד!');
-  } catch (err) { toast('error', `שגיאה: ${err.message}`); }
-  finally { document.getElementById('burn-btn').disabled = false; document.getElementById('burn-progress').style.display = 'none'; }
+    const blob = await burnSubtitlesWasm(
+      state.videoBlobUrl, state.segments, state.filename || 'video.mp4', style, onProgress
+    );
+
+    onProgress(100, 'מוריד...');
+
+    const baseName = (state.filename || 'video').replace(/\.[^.]+$/, '');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${baseName}_עם_כתוביות.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    toast('success', 'הסרטון עם הכתוביות הורד!');
+    setStepDone(3);
+  } catch (err) {
+    console.error('burn error', err);
+    toast('error', `שגיאה בצריבה: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    progressEl.style.display = 'none';
+    if (bar) bar.style.width = '0%';
+  }
 }
 
 // ── TABS ──────────────────────────────────────────────────────────
