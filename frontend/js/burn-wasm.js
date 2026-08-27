@@ -4,7 +4,10 @@
    Requires COOP/COEP headers (set in vercel.json).
    ============================================================================ */
 
-const FFMPEG_CDN_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/umd';
+// ffmpeg.js and its worker chunk (814.ffmpeg.js) are self-hosted under /js/vendor/
+// so the Worker URL resolves to the same origin — cross-origin Workers are blocked
+// by browsers even with CORP headers. Core wasm stays on CDN (loaded via fetch).
+const FFMPEG_LOCAL_BASE = '/js/vendor';
 const FFMPEG_CORE_CDN = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
 
 let _ffmpeg = null;
@@ -79,9 +82,9 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
 async function loadFFmpeg(onProgress) {
   if (_ffmpeg && _loaded) return _ffmpeg;
 
-  // Dynamically load the ffmpeg.wasm UMD bundle
+  // Dynamically load the self-hosted ffmpeg UMD bundle (same-origin so Worker works)
   if (!window.FFmpegWASM) {
-    await loadScript(`${FFMPEG_CDN_BASE}/ffmpeg.js`);
+    await loadScript(`${FFMPEG_LOCAL_BASE}/ffmpeg.js`);
   }
 
   const { FFmpeg } = window.FFmpegWASM;
