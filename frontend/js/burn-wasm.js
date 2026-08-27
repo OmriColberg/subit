@@ -4,11 +4,12 @@
    Requires COOP/COEP headers (set in vercel.json).
    ============================================================================ */
 
-const FFMPEG_CDN_BASE = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd';
-const FFMPEG_CORE_CDN = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+const FFMPEG_CDN_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/umd';
+const FFMPEG_CORE_CDN = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
 
 let _ffmpeg = null;
 let _loaded = false;
+let _onProgress = null;
 
 // ── PUBLIC API ─────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   // Build the subtitles filter string
   const filterStr = buildSubtitlesFilter(srtName, style);
 
-  // Run ffmpeg
+  _onProgress = onProgress;
   // -vf subtitles=... burns the SRT into the video stream
   // -c:a copy keeps audio untouched (fast)
   // -preset ultrafast keeps encoding fast at the cost of slightly larger file
@@ -60,6 +61,7 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
     outputName
   ]);
 
+  _onProgress = null;
   onProgress(92, 'מוריד...');
 
   const outData = await ffmpeg.readFile(outputName);
@@ -88,7 +90,7 @@ async function loadFFmpeg(onProgress) {
   _ffmpeg.on('progress', ({ progress }) => {
     // ffmpeg reports 0–1; map to 25–90 on our bar
     const pct = Math.round(25 + Math.min(progress, 1) * 65);
-    onProgress(pct, `צורב כתוביות... ${Math.round(progress * 100)}%`);
+    if (_onProgress) _onProgress(pct, `צורב כתוביות... ${Math.round(progress * 100)}%`);
   });
 
   onProgress(8, 'מוריד ליבת FFmpeg (פעם ראשונה בלבד)...');
