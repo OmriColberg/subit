@@ -1250,6 +1250,27 @@ html.light .tl-playhead {
   text-align: center
 }
 
+.tl-delete-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.tl-delete-btn:hover {
+  color: #e53e3e;
+  border-color: #e53e3e;
+  background: rgba(229,62,62,.08);
+}
+
 .tl-edit-text {
   flex: 1;
   background: transparent;
