@@ -159,16 +159,24 @@ function buildSubtitlesFilter(srtPath, style) {
   const hasShadow = style.outline === 'dark-shadow';
   const hasOutline = style.outline !== 'none';
 
-  // Font size: our UI uses px (designed for ~1280px wide video)
-  // FFmpeg ASS uses "points" at 384px ref height; scale accordingly
-  const fontSize = Math.round((style.fontSize || 24) * 1.4);
+  // libass uses PlayResY=288 as its virtual coordinate space for SRT input.
+  // A FontSize of X in that space renders as X * (native_video_height / 288) px.
+  // We want the burned font to occupy the same fraction of video height as the
+  // browser CSS font (size px) occupies of the rendered video element height.
+  // => fontSizeAss = fontSize * 288 / cssVideoHeight
+  const cssVideoHeight = style.cssVideoHeight || 400;
+  const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / cssVideoHeight));
 
-  // Vertical position: MarginV is from bottom (positive = up from bottom)
-  const marginVMap = {
-    'very-bottom': 5, 'bottom': 30, 'center-bottom': 120,
-    'center': 200, 'center-top': 280, 'top': 340, 'very-top': 360
+  // VTT uses line:X% (top of cue from top of video).
+  // ASS Alignment=2: MarginV is distance (in PlayResY=288 units) from bottom to bottom of text.
+  // To match: bottom-of-text fraction from bottom = (1 - X/100) - fontSize/288
+  // => MarginV = (1 - X/100) * 288 - fontSize
+  const linePctMap = {
+    'very-bottom': 96, 'bottom': 88, 'center-bottom': 72,
+    'center': 50, 'center-top': 30, 'top': 12, 'very-top': 5,
   };
-  const marginV = marginVMap[style.position] || 30;
+  const linePct = linePctMap[style.position] ?? 88;
+  const marginV = Math.max(0, Math.round((1 - linePct / 100) * 288 - fontSize));
 
   // Bold / italic
   const bold = style.fontStyle?.includes('bold') ? 1 : 0;

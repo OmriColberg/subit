@@ -1533,7 +1533,7 @@ function applyBurnStylesToOverlay() {
     #video-player::cue {
       font-family: ${font}, sans-serif;
       color: ${txtColor};
-      font-size: ${(size / 24 * 3.2).toFixed(2)}vh;
+      font-size: ${size}px;
       font-weight: ${style.includes('bold') ? '700' : '400'};
       font-style: ${style.includes('italic') ? 'italic' : 'normal'};
       text-shadow: ${shadow};
@@ -1652,6 +1652,14 @@ async function burnSubtitles() {
     if (label) label.textContent = msg || 'צורב כתוביות...';
   };
 
+  // Compute actual rendered video area height (object-fit:contain may add letterboxing)
+  const nativeW = videoEl.videoWidth || 1;
+  const nativeH = videoEl.videoHeight || 1;
+  const elW = videoEl.clientWidth;
+  const elH = videoEl.clientHeight;
+  const renderedScale = Math.min(elW / nativeW, elH / nativeH);
+  const cssVideoHeight = Math.round(nativeH * renderedScale) || elH;
+
   const style = {
     font: document.getElementById('burn-font')?.value || 'Arial',
     fontSize: parseInt(document.getElementById('burn-fontsize')?.value || 24),
@@ -1660,6 +1668,7 @@ async function burnSubtitles() {
     position: document.getElementById('burn-position')?.value || 'bottom',
     fontStyle: document.getElementById('burn-style')?.value || 'normal',
     bgOpacity: parseInt(document.getElementById('burn-bg-opacity')?.value || 0),
+    cssVideoHeight,
   };
 
   try {
