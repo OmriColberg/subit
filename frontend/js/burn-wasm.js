@@ -188,6 +188,11 @@ function buildSubtitlesFilter(srtPath, style) {
     : 'FF';
   const backColor = style.bgOpacity > 0 ? `&H${bgAlpha}000000` : '&H00000000';
 
+  // BorderStyle=3 makes libass draw a solid opaque box behind the entire cue
+  // (matching the browser's ::cue background rectangle).
+  // BorderStyle=1 (default) draws BackColour per-glyph, which looks wrong.
+  const borderStyle = style.bgOpacity > 0 ? 3 : 1;
+
   const force_style = [
     `FontName=DejaVu Sans`,
     `FontSize=${fontSize}`,
@@ -196,8 +201,9 @@ function buildSubtitlesFilter(srtPath, style) {
     `BackColour=${backColor}`,
     `Bold=${bold}`,
     `Italic=${italic}`,
-    `Outline=${hasOutline ? 2 : 0}`,
-    `Shadow=${hasShadow ? 3 : 0}`,
+    `BorderStyle=${borderStyle}`,
+    `Outline=${borderStyle === 1 && hasOutline ? 2 : 0}`,
+    `Shadow=${borderStyle === 1 && hasShadow ? 3 : 0}`,
     `Alignment=2`,  // bottom-center in SSA
     `MarginV=${marginV}`,
   ].join(',');
