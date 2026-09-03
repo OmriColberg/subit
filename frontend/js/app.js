@@ -181,7 +181,7 @@ function resetSettings() {
   if (mw) mw.value = '4';
   // Reset burn/style to defaults
   const defaults = {
-    'burn-font': 'Arial', 'burn-position': 'bottom', 'burn-color': 'white',
+    'burn-font': 'Rubik', 'burn-position': 'bottom', 'burn-color': 'white',
     'burn-outline': 'none', 'burn-fontsize': '24', 'burn-style': 'normal', 'burn-bg-opacity': '0'
   };
   Object.entries(defaults).forEach(([id, val]) => {
@@ -1544,7 +1544,7 @@ function applyBurnStylesToOverlay() {
 }
 
 function resetBurnDefaults() {
-  document.getElementById('burn-font').value = 'Arial';
+  document.getElementById('burn-font').value = 'Rubik';
   document.getElementById('burn-position').value = 'bottom';
   document.getElementById('burn-color').value = 'white';
   document.getElementById('burn-outline').value = 'none';
