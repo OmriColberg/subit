@@ -10,6 +10,16 @@
 const FFMPEG_LOCAL_BASE = '/js/vendor';
 const FFMPEG_CORE_CDN = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
 
+// Self-hosted font files (must be same-origin due to COEP).
+// Key = font family name as it appears in the UI dropdown and in ASS FontName.
+const FONT_FILE_MAP = {
+  'Rubik':            '/js/vendor/fonts/Rubik.ttf',
+  'Heebo':            '/js/vendor/fonts/Heebo.ttf',
+  'Assistant':        '/js/vendor/fonts/Assistant.ttf',
+  'Noto Sans Hebrew': '/js/vendor/fonts/NotoSansHebrew.ttf',
+  'DejaVu Sans':      '/js/vendor/DejaVuSans.ttf',
+};
+
 let _ffmpeg = null;
 let _loaded = false;
 let _onProgress = null;
@@ -48,12 +58,12 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
 
   // libass (used by the subtitles filter) needs at least one font in the FS
   // to render text; without fonts the subtitle layer is invisible.
-  await ensureFontInFS(ffmpeg);
+  const fontName = await ensureFontInFS(ffmpeg, style.font);
 
   onProgress(25, 'צורב כתוביות...');
 
   // Build the subtitles filter string
-  const filterStr = buildSubtitlesFilter(srtName, style);
+  const filterStr = buildSubtitlesFilter(srtName, { ...style, fontName });
 
   _onProgress = onProgress;
   // -vf subtitles=... burns the SRT into the video stream
@@ -77,7 +87,7 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   try { await ffmpeg.deleteFile(inputName); } catch {}
   try { await ffmpeg.deleteFile(outputName); } catch {}
   try { await ffmpeg.deleteFile(srtName); } catch {}
-  try { await ffmpeg.deleteFile('/fonts/DejaVuSans.ttf'); } catch {}
+  try { await ffmpeg.deleteFile(`/fonts/${fontName.replace(/\s+/g, '')}.ttf`); } catch {}
 
   return new Blob([outData.buffer], { type: 'video/mp4' });
 }
@@ -123,15 +133,15 @@ function loadScript(src) {
   });
 }
 
-async function ensureFontInFS(ffmpeg) {
-  // libass requires at least one font in the virtual FS to render subtitle text.
-  // We self-host DejaVuSans.ttf (Hebrew-capable) and write it to /fonts/ each run.
-  try {
-    await ffmpeg.createDir('/fonts');
-  } catch {}
-  const resp = await fetch('/js/vendor/DejaVuSans.ttf');
+async function ensureFontInFS(ffmpeg, fontName) {
+  const name = FONT_FILE_MAP[fontName] ? fontName : 'DejaVu Sans';
+  const url  = FONT_FILE_MAP[name];
+  try { await ffmpeg.createDir('/fonts'); } catch {}
+  const resp = await fetch(url);
   const data = new Uint8Array(await resp.arrayBuffer());
-  await ffmpeg.writeFile('/fonts/DejaVuSans.ttf', data);
+  // Filename in virtual FS must match the family name libass reads from the TTF.
+  await ffmpeg.writeFile(`/fonts/${name.replace(/\s+/g, '')}.ttf`, data);
+  return name;
 }
 
 function buildSRTString(segments) {
@@ -194,7 +204,7 @@ function buildSubtitlesFilter(srtPath, style) {
   const borderStyle = style.bgOpacity > 0 ? 3 : 1;
 
   const force_style = [
-    `FontName=DejaVu Sans`,
+    `FontName=${style.fontName || 'DejaVu Sans'}`,
     `FontSize=${fontSize}`,
     `PrimaryColour=${primaryColor}`,
     `OutlineColour=${outlineColor}`,

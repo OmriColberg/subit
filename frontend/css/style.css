@@ -1896,6 +1896,13 @@ html.light .srt-loading-overlay {
   max-height: max(460px, 60vh);
 }
 
+/* Self-hosted Hebrew fonts — same files used for browser preview and burn-in */
+@font-face { font-family: 'Rubik';            src: url('/js/vendor/fonts/Rubik.ttf');           font-display: swap; }
+@font-face { font-family: 'Heebo';            src: url('/js/vendor/fonts/Heebo.ttf');           font-display: swap; }
+@font-face { font-family: 'Assistant';        src: url('/js/vendor/fonts/Assistant.ttf');       font-display: swap; }
+@font-face { font-family: 'Noto Sans Hebrew'; src: url('/js/vendor/fonts/NotoSansHebrew.ttf'); font-display: swap; }
+@font-face { font-family: 'DejaVu Sans';      src: url('/js/vendor/DejaVuSans.ttf');            font-display: swap; }
+
 /* Browser-rendered WebVTT cues (replaces the old .video-sub-overlay div).
    These are defaults; applyBurnStylesToOverlay() overrides them at runtime. */
 #video-player::cue {
