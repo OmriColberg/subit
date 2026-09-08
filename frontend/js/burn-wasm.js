@@ -196,9 +196,11 @@ function buildSubtitlesFilter(srtPath, style) {
   // Slider "size" units = pixels at WYSIWYG_REF_HEIGHT of rendered video height
   // (same constant as app.js). This makes the burned fraction of video height
   // identical to what the browser shows at any display size, including fullscreen.
-  // fontSizeAss = fontSize * 288 / WYSIWYG_REF_HEIGHT  (PlayResY=288 space)
+  // Empirically, libass renders glyphs ~25% smaller than CSS ::cue at the same declared
+  // font-size, so we compensate by scaling up (dividing by 320 instead of 400).
   const WYSIWYG_REF_HEIGHT = 400;
-  const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / WYSIWYG_REF_HEIGHT));
+  const BURN_SIZE_SCALE = 320; // 400 * 0.8 — compensates for CSS vs libass size difference
+  const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / BURN_SIZE_SCALE));
 
   // VTT uses line:X% (top of cue from top of video).
   // ASS Alignment=2: MarginV is distance (in PlayResY=288 units) from bottom to bottom of text.
