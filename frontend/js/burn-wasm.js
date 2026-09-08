@@ -54,7 +54,7 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
 
   // Write files into ffmpeg's virtual FS
   await ffmpeg.writeFile(inputName, videoData);
-  await ffmpeg.writeFile(srtName, buildSRTString(segments));
+  await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars));
 
   // libass (used by the subtitles filter) needs at least one font in the FS
   // to render text; without fonts the subtitle layer is invisible.
@@ -144,9 +144,23 @@ async function ensureFontInFS(ffmpeg, fontName) {
   return name;
 }
 
-function buildSRTString(segments) {
+function wrapLine(text, maxChars) {
+  if (!text || text.length <= maxChars) return text;
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const word of words) {
+    const next = cur ? cur + ' ' + word : word;
+    if (cur && next.length > maxChars) { lines.push(cur); cur = word; }
+    else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines.join('\n');
+}
+
+function buildSRTString(segments, wrapChars) {
   return segments.map(s =>
-    `${s.index}\n${s.start} --> ${s.end}\n${s.text}\n`
+    `${s.index}\n${s.start} --> ${s.end}\n${wrapChars ? wrapLine(s.text, wrapChars) : s.text}\n`
   ).join('\n');
 }
 

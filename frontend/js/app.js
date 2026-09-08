@@ -930,6 +930,22 @@ function syncOverlaySubtitle() {
 // ── WEBVTT TRACK (replaces the old overlay div) ───────────────────
 let _vttBlobUrl = null;
 
+// Wrap subtitle text at word boundaries so it never overflows the video width.
+// Portrait videos are narrow (~22 chars at 20px); landscape allows more (~42).
+function wrapSubtitleLine(text, maxChars) {
+  if (!text || text.length <= maxChars) return text;
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const word of words) {
+    const next = cur ? cur + ' ' + word : word;
+    if (cur && next.length > maxChars) { lines.push(cur); cur = word; }
+    else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines.join('\n');
+}
+
 function buildVTT() {
   const pos = document.getElementById('burn-position')?.value || 'bottom';
   const lineMap = {
@@ -938,9 +954,13 @@ function buildVTT() {
   };
   const line = lineMap[pos] || lineMap['bottom'];
 
+  const videoEl = document.getElementById('video-player');
+  const isPortrait = videoEl && videoEl.videoHeight > videoEl.videoWidth;
+  const maxChars = isPortrait ? 22 : 42;
+
   let vtt = 'WEBVTT\n\n';
   state.segments.forEach((s, i) => {
-    const text = (s.text || '').trim();
+    const text = wrapSubtitleLine((s.text || '').trim(), maxChars);
     if (!text) return;                       // skip empty cues
     const start = s.start.replace(',', '.'); // SRT uses comma, VTT uses dot
     const end   = s.end.replace(',', '.');
@@ -1571,7 +1591,7 @@ function applyOrientationDefaults(isPortrait) {
     set('burn-style',      'bold');
     set('burn-color',      'white');
     set('burn-outline',    'black');
-    set('burn-fontsize',   '32');   document.getElementById('font-size-val').textContent = '32';
+    set('burn-fontsize',   '20');   document.getElementById('font-size-val').textContent = '20';
     set('burn-bg-opacity', '0');    document.getElementById('bg-opacity-val').textContent = '0';
     set('burn-position',   'center-bottom');
   } else {
@@ -1696,6 +1716,7 @@ async function burnSubtitles() {
     if (label) label.textContent = msg || 'צורב כתוביות...';
   };
 
+  const isPortrait = (videoEl.videoHeight || 0) > (videoEl.videoWidth || 0);
   const style = {
     font: document.getElementById('burn-font')?.value || 'Rubik',
     fontSize: parseInt(document.getElementById('burn-fontsize')?.value || 24),
@@ -1704,6 +1725,7 @@ async function burnSubtitles() {
     position: document.getElementById('burn-position')?.value || 'bottom',
     fontStyle: document.getElementById('burn-style')?.value || 'normal',
     bgOpacity: parseInt(document.getElementById('burn-bg-opacity')?.value || 0),
+    wrapChars: isPortrait ? 22 : 42,
   };
 
   try {
