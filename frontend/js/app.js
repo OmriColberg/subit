@@ -354,6 +354,7 @@ function showResults() {
       const wrap = document.getElementById('video-wrap');
       const isPortrait = player.videoHeight > player.videoWidth;
       wrap.classList.toggle('is-portrait', isPortrait);
+      applyOrientationDefaults(isPortrait);
     }, { once: true });
     setTimeout(applyBurnStylesToOverlay, 100);
   }
@@ -1541,6 +1542,29 @@ function applyBurnStylesToOverlay() {
     }`;
 
   refreshVideoTrack();  // position lives in the cues themselves
+}
+
+function applyOrientationDefaults(isPortrait) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  if (isPortrait) {
+    set('burn-font',       'Rubik');
+    set('burn-style',      'bold');
+    set('burn-color',      'white');
+    set('burn-outline',    'black');
+    set('burn-fontsize',   '32');   document.getElementById('font-size-val').textContent = '32';
+    set('burn-bg-opacity', '0');    document.getElementById('bg-opacity-val').textContent = '0';
+    set('burn-position',   'center-bottom');
+  } else {
+    set('burn-font',       'Rubik');
+    set('burn-style',      'normal');
+    set('burn-color',      'white');
+    set('burn-outline',    'black');
+    set('burn-fontsize',   '32');   document.getElementById('font-size-val').textContent = '32';
+    set('burn-bg-opacity', '20');   document.getElementById('bg-opacity-val').textContent = '20';
+    set('burn-position',   'bottom');
+  }
+  updateBurnPreview();
+  applyBurnStylesToOverlay();
 }
 
 function resetBurnDefaults() {
