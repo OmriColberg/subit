@@ -1620,17 +1620,9 @@ function applyOrientationDefaults(isPortrait) {
 }
 
 function resetBurnDefaults() {
-  document.getElementById('burn-font').value = 'Rubik';
-  document.getElementById('burn-position').value = 'bottom';
-  document.getElementById('burn-color').value = 'white';
-  document.getElementById('burn-outline').value = 'none';
-  document.getElementById('burn-fontsize').value = '24';
-  document.getElementById('font-size-val').textContent = '24';
-  document.getElementById('burn-style').value = 'normal';
-  document.getElementById('burn-bg-opacity').value = '0';
-  document.getElementById('bg-opacity-val').textContent = '0';
-  updateBurnPreview();
-  applyBurnStylesToOverlay();
+  const videoEl = document.getElementById('video-player');
+  const isPortrait = videoEl && videoEl.videoHeight > videoEl.videoWidth;
+  applyOrientationDefaults(isPortrait);
 }
 
 function openBurnSettings() {
