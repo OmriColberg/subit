@@ -54,7 +54,15 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
 
   // Write files into ffmpeg's virtual FS
   await ffmpeg.writeFile(inputName, videoData);
-  await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars));
+  // BorderStyle=3 (background box) sets force_style Outline=0, losing text decoration.
+  // Inject ASS inline tags to force outline/shadow on the glyphs even inside the box.
+  let overrideTag = '';
+  if (style.bgOpacity > 0 && style.outline !== 'none') {
+    overrideTag = style.outline === 'dark-shadow'
+      ? '{\\bord0\\shad3\\blur3}'  // soft drop shadow on text
+      : '{\\bord1\\blur1\\shad0}'; // thin soft outline on text, no shadow
+  }
+  await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars, overrideTag));
 
   // libass (used by the subtitles filter) needs at least one font in the FS
   // to render text; without fonts the subtitle layer is invisible.
@@ -158,10 +166,12 @@ function wrapLine(text, maxChars) {
   return lines.join('\n');
 }
 
-function buildSRTString(segments, wrapChars) {
-  return segments.map(s =>
-    `${s.index}\n${s.start} --> ${s.end}\n${wrapChars ? wrapLine(s.text, wrapChars) : s.text}\n`
-  ).join('\n');
+function buildSRTString(segments, wrapChars, overrideTag) {
+  return segments.map(s => {
+    let text = wrapChars ? wrapLine(s.text, wrapChars) : s.text;
+    if (overrideTag) text = overrideTag + text;
+    return `${s.index}\n${s.start} --> ${s.end}\n${text}\n`;
+  }).join('\n');
 }
 
 function buildSubtitlesFilter(srtPath, style) {
@@ -225,8 +235,9 @@ function buildSubtitlesFilter(srtPath, style) {
     `Bold=${bold}`,
     `Italic=${italic}`,
     `BorderStyle=${borderStyle}`,
-    `Outline=${borderStyle === 1 && hasOutline ? 2 : 0}`,
+    `Outline=${borderStyle === 1 && hasOutline ? 1 : 0}`,
     `Shadow=${borderStyle === 1 && hasShadow ? 3 : 0}`,
+    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 1 : 0}`,
     `Alignment=2`,  // bottom-center in SSA
     `MarginV=${marginV}`,
   ].join(',');
