@@ -930,6 +930,23 @@ function syncOverlaySubtitle() {
 // ── WEBVTT TRACK (replaces the old overlay div) ───────────────────
 let _vttBlobUrl = null;
 
+// Wrap subtitle text at word boundaries so it never overflows the video width.
+// maxChars is computed from font size + rendered video width so reducing the
+// font automatically gives more chars per line (fewer or no forced breaks).
+function wrapSubtitleLine(text, maxChars) {
+  if (!text || text.length <= maxChars) return text;
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const word of words) {
+    const next = cur ? cur + ' ' + word : word;
+    if (cur && next.length > maxChars) { lines.push(cur); cur = word; }
+    else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines.join('\n');
+}
+
 function buildVTT() {
   const pos = document.getElementById('burn-position')?.value || 'bottom';
   const lineMap = {
@@ -938,9 +955,24 @@ function buildVTT() {
   };
   const line = lineMap[pos] || lineMap['bottom'];
 
+  const videoEl = document.getElementById('video-player');
+  const fontSize = parseInt(document.getElementById('burn-fontsize')?.value || 20);
+  // Compute how many chars fit per line based on rendered video width + font size.
+  // Hebrew chars ≈ 0.65× font size wide; leave 10% margin.
+  // Falls back to orientation-based estimate when video metadata isn't ready.
+  let maxChars = videoEl && videoEl.videoHeight > videoEl.videoWidth ? 22 : 42;
+  if (videoEl && videoEl.videoWidth && videoEl.clientWidth) {
+    const scale = Math.min(videoEl.clientWidth / videoEl.videoWidth,
+                           videoEl.clientHeight / videoEl.videoHeight);
+    const renderedW = Math.max(50, Math.round(videoEl.videoWidth * scale));
+    const renderedH = Math.max(50, Math.round(videoEl.videoHeight * scale));
+    const displaySize = Math.round(fontSize * renderedH / WYSIWYG_REF_HEIGHT);
+    maxChars = Math.max(10, Math.floor(renderedW * 0.90 / Math.max(1, displaySize * 0.65)));
+  }
+
   let vtt = 'WEBVTT\n\n';
   state.segments.forEach((s, i) => {
-    const text = (s.text || '').trim();
+    const text = wrapSubtitleLine((s.text || '').trim(), maxChars);
     if (!text) return;                       // skip empty cues
     const start = s.start.replace(',', '.'); // SRT uses comma, VTT uses dot
     const end   = s.end.replace(',', '.');
@@ -1571,7 +1603,7 @@ function applyOrientationDefaults(isPortrait) {
     set('burn-style',      'bold');
     set('burn-color',      'white');
     set('burn-outline',    'black');
-    set('burn-fontsize',   '32');   document.getElementById('font-size-val').textContent = '32';
+    set('burn-fontsize',   '20');   document.getElementById('font-size-val').textContent = '20';
     set('burn-bg-opacity', '0');    document.getElementById('bg-opacity-val').textContent = '0';
     set('burn-position',   'center-bottom');
   } else {
@@ -1696,14 +1728,23 @@ async function burnSubtitles() {
     if (label) label.textContent = msg || 'צורב כתוביות...';
   };
 
+  const burnFontSize = parseInt(document.getElementById('burn-fontsize')?.value || 24);
+  // Burned font occupies burnFontSize * nativeH / 400 px in the actual video.
+  // Hebrew chars ≈ 0.65× font height wide; leave 10% margin on native video width.
+  const nativeW = videoEl.videoWidth || 1920;
+  const nativeH = videoEl.videoHeight || 1080;
+  const fontPx = burnFontSize * nativeH / 400;
+  const wrapChars = Math.max(10, Math.floor(nativeW * 0.90 / Math.max(1, fontPx * 0.65)));
+
   const style = {
     font: document.getElementById('burn-font')?.value || 'Rubik',
-    fontSize: parseInt(document.getElementById('burn-fontsize')?.value || 24),
+    fontSize: burnFontSize,
     color: document.getElementById('burn-color')?.value || 'white',
     outline: document.getElementById('burn-outline')?.value || 'black',
     position: document.getElementById('burn-position')?.value || 'bottom',
     fontStyle: document.getElementById('burn-style')?.value || 'normal',
     bgOpacity: parseInt(document.getElementById('burn-bg-opacity')?.value || 0),
+    wrapChars,
   };
 
   try {
