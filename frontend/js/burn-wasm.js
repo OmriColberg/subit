@@ -59,8 +59,8 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   let overrideTag = '';
   if (style.bgOpacity > 0 && style.outline !== 'none') {
     overrideTag = style.outline === 'dark-shadow'
-      ? '{\\bord0\\shad3}'    // drop shadow on text
-      : '{\\bord2\\shad0}';   // crisp outline on text, no shadow
+      ? '{\\bord0\\shad3\\blur3}'  // soft drop shadow on text
+      : '{\\bord1\\blur1\\shad0}'; // thin soft outline on text, no shadow
   }
   await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars, overrideTag));
 
@@ -235,8 +235,9 @@ function buildSubtitlesFilter(srtPath, style) {
     `Bold=${bold}`,
     `Italic=${italic}`,
     `BorderStyle=${borderStyle}`,
-    `Outline=${borderStyle === 1 && hasOutline ? 2 : 0}`,
+    `Outline=${borderStyle === 1 && hasOutline ? 1 : 0}`,
     `Shadow=${borderStyle === 1 && hasShadow ? 3 : 0}`,
+    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 1 : 0}`,
     `Alignment=2`,  // bottom-center in SSA
     `MarginV=${marginV}`,
   ].join(',');
