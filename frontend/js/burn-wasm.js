@@ -169,13 +169,12 @@ function buildSubtitlesFilter(srtPath, style) {
   const hasShadow = style.outline === 'dark-shadow';
   const hasOutline = style.outline !== 'none';
 
-  // libass uses PlayResY=288 as its virtual coordinate space for SRT input.
-  // A FontSize of X in that space renders as X * (native_video_height / 288) px.
-  // We want the burned font to occupy the same fraction of video height as the
-  // browser CSS font (size px) occupies of the rendered video element height.
-  // => fontSizeAss = fontSize * 288 / cssVideoHeight
-  const cssVideoHeight = style.cssVideoHeight || 400;
-  const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / cssVideoHeight));
+  // Slider "size" units = pixels at WYSIWYG_REF_HEIGHT of rendered video height
+  // (same constant as app.js). This makes the burned fraction of video height
+  // identical to what the browser shows at any display size, including fullscreen.
+  // fontSizeAss = fontSize * 288 / WYSIWYG_REF_HEIGHT  (PlayResY=288 space)
+  const WYSIWYG_REF_HEIGHT = 400;
+  const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / WYSIWYG_REF_HEIGHT));
 
   // VTT uses line:X% (top of cue from top of video).
   // ASS Alignment=2: MarginV is distance (in PlayResY=288 units) from bottom to bottom of text.

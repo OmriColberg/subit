@@ -1499,22 +1499,42 @@ document.addEventListener('click', e => {
 
 
 
+// Slider "size" units = pixels at this reference height.
+// Using a fixed constant (not the current window size) makes the burned output
+// and the fullscreen preview consistent — both scale size proportionally.
+const WYSIWYG_REF_HEIGHT = 400;
+let _cueResizeObserver = null;
 let _applyStylesTimer = null;
 function scheduleApplyStyles() {
   clearTimeout(_applyStylesTimer);
   _applyStylesTimer = setTimeout(applyBurnStylesToOverlay, 150);
 }
 
-// Styles the browser-rendered WebVTT cues via a ::cue rule.
-// NOTE: position is NOT set here - it lives in the VTT "line:" setting, so a
-// position change requires rebuilding the track (hence refreshVideoTrack below).
 function applyBurnStylesToOverlay() {
-  const font    = document.getElementById('burn-font')?.value || 'Arial';
+  const font    = document.getElementById('burn-font')?.value || 'Rubik';
   const color   = document.getElementById('burn-color')?.value || 'white';
   const outline = document.getElementById('burn-outline')?.value || 'none';
   const size    = parseInt(document.getElementById('burn-fontsize')?.value || 24);
   const style   = document.getElementById('burn-style')?.value || 'normal';
   const bgOp    = parseInt(document.getElementById('burn-bg-opacity')?.value || 0);
+
+  // Compute actual rendered video height (object-fit:contain may add letterboxing)
+  const videoEl = document.getElementById('video-player');
+  let renderedH = WYSIWYG_REF_HEIGHT;
+  if (videoEl && videoEl.videoWidth) {
+    const scale = Math.min(videoEl.clientWidth / videoEl.videoWidth,
+                           videoEl.clientHeight / videoEl.videoHeight);
+    renderedH = Math.max(50, Math.round(videoEl.videoHeight * scale));
+  }
+  const displaySize = Math.round(size * renderedH / WYSIWYG_REF_HEIGHT);
+
+  // Watch for size changes so fullscreen and window resize stay consistent
+  if (videoEl && !_cueResizeObserver) {
+    _cueResizeObserver = new ResizeObserver(scheduleApplyStyles);
+    _cueResizeObserver.observe(videoEl);
+    document.addEventListener('fullscreenchange', scheduleApplyStyles);
+    document.addEventListener('webkitfullscreenchange', scheduleApplyStyles);
+  }
 
   const colorMap = {white:'#fff',yellow:'#ff0',black:'#000',cyan:'#0ff',lime:'#0f8',red:'#f44',orange:'#f90',pink:'#f8c'};
   const txtColor = colorMap[color] || '#fff';
@@ -1534,7 +1554,7 @@ function applyBurnStylesToOverlay() {
     #video-player::cue {
       font-family: ${font}, sans-serif;
       color: ${txtColor};
-      font-size: ${size}px;
+      font-size: ${displaySize}px;
       font-weight: ${style.includes('bold') ? '700' : '400'};
       font-style: ${style.includes('italic') ? 'italic' : 'normal'};
       text-shadow: ${shadow};
@@ -1676,23 +1696,14 @@ async function burnSubtitles() {
     if (label) label.textContent = msg || 'צורב כתוביות...';
   };
 
-  // Compute actual rendered video area height (object-fit:contain may add letterboxing)
-  const nativeW = videoEl.videoWidth || 1;
-  const nativeH = videoEl.videoHeight || 1;
-  const elW = videoEl.clientWidth;
-  const elH = videoEl.clientHeight;
-  const renderedScale = Math.min(elW / nativeW, elH / nativeH);
-  const cssVideoHeight = Math.round(nativeH * renderedScale) || elH;
-
   const style = {
-    font: document.getElementById('burn-font')?.value || 'Arial',
+    font: document.getElementById('burn-font')?.value || 'Rubik',
     fontSize: parseInt(document.getElementById('burn-fontsize')?.value || 24),
     color: document.getElementById('burn-color')?.value || 'white',
     outline: document.getElementById('burn-outline')?.value || 'black',
     position: document.getElementById('burn-position')?.value || 'bottom',
     fontStyle: document.getElementById('burn-style')?.value || 'normal',
     bgOpacity: parseInt(document.getElementById('burn-bg-opacity')?.value || 0),
-    cssVideoHeight,
   };
 
   try {
