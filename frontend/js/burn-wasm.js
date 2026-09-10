@@ -59,8 +59,8 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   let overrideTag = '';
   if (style.bgOpacity > 0 && style.outline !== 'none') {
     overrideTag = style.outline === 'dark-shadow'
-      ? '{\\bord0\\shad3\\blur3}'  // soft drop shadow on text
-      : '{\\bord1\\blur1\\shad0}'; // thin soft outline on text, no shadow
+      ? '{\\bord0\\shad3\\blur1.5}'   // soft drop shadow on text
+      : '{\\bord1.5\\blur0.5\\shad0}'; // thin outline on text, no shadow
   }
   await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars, overrideTag));
 
@@ -196,10 +196,10 @@ function buildSubtitlesFilter(srtPath, style) {
   // Slider "size" units = pixels at WYSIWYG_REF_HEIGHT of rendered video height
   // (same constant as app.js). This makes the burned fraction of video height
   // identical to what the browser shows at any display size, including fullscreen.
-  // Empirically, libass renders glyphs ~25% smaller than CSS ::cue at the same declared
-  // font-size, so we compensate by scaling up (dividing by 320 instead of 400).
+  // Empirically, libass renders glyphs smaller than CSS ::cue at the same declared
+  // font-size, so we compensate by scaling up slightly (dividing by 360 instead of 400).
   const WYSIWYG_REF_HEIGHT = 400;
-  const BURN_SIZE_SCALE = 320; // 400 * 0.8 — compensates for CSS vs libass size difference
+  const BURN_SIZE_SCALE = 360; // compensates for CSS vs libass size difference
   const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / BURN_SIZE_SCALE));
 
   // VTT uses line:X% (top of cue from top of video).
@@ -237,9 +237,9 @@ function buildSubtitlesFilter(srtPath, style) {
     `Bold=${bold}`,
     `Italic=${italic}`,
     `BorderStyle=${borderStyle}`,
-    `Outline=${borderStyle === 1 && hasOutline ? 1 : 0}`,
+    `Outline=${borderStyle === 1 && hasOutline ? 1.5 : 0}`,
     `Shadow=${borderStyle === 1 && hasShadow ? 3 : 0}`,
-    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 1 : 0}`,
+    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 0.5 : 0}`,
     `Alignment=2`,  // bottom-center in SSA
     `MarginV=${marginV}`,
   ].join(',');
