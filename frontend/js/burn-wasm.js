@@ -58,9 +58,8 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   // Inject ASS inline tags to force outline/shadow on the glyphs even inside the box.
   let overrideTag = '';
   if (style.bgOpacity > 0 && style.outline !== 'none') {
-    overrideTag = style.outline === 'dark-shadow'
-      ? '{\\bord0\\shad3\\blur2}'     // soft drop shadow on text
-      : '{\\bord0.6\\blur2\\shad0}'; // thin soft outline on text, no shadow
+    const d = outlineDecoration(style.outline);
+    overrideTag = `{\\bord${d.bord}\\shad${d.shad}\\blur${d.blur}}`;
   }
   await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars, overrideTag));
 
@@ -174,6 +173,16 @@ function buildSRTString(segments, wrapChars, overrideTag) {
   }).join('\n');
 }
 
+// Mirrors the browser's ::cue text-shadow, in PlayResY=288 units.
+// CSS 'black'/'white' is a down-right 2px/3px-blur shadow plus faint 1px counter-
+// shadows, so the glyph edge stays crisp — a thin stroke carries the halo and
+// Shadow supplies the direction. 'dark-shadow' is CSS 3px 4px 8px: no stroke.
+function outlineDecoration(outline) {
+  if (outline === 'none')        return { bord: 0,   shad: 0,   blur: 0 };
+  if (outline === 'dark-shadow') return { bord: 0,   shad: 3,   blur: 4 };
+  return { bord: 0.4, shad: 1.5, blur: 2 };
+}
+
 function buildSubtitlesFilter(srtPath, style) {
   // Map our color names to FFmpeg color format
   const colorMap = {
@@ -190,8 +199,7 @@ function buildSubtitlesFilter(srtPath, style) {
     'dark-shadow': '&H000000', none: '&H000000'
   };
   const outlineColor = outlineColorMap[style.outline] || '&H000000';
-  const hasShadow = style.outline === 'dark-shadow';
-  const hasOutline = style.outline !== 'none';
+  const deco = outlineDecoration(style.outline);
 
   // Slider "size" units = pixels at WYSIWYG_REF_HEIGHT of rendered video height
   // (same constant as app.js). This makes the burned fraction of video height
@@ -211,7 +219,12 @@ function buildSubtitlesFilter(srtPath, style) {
     'center': 50, 'center-top': 30, 'top': 12, 'very-top': 5,
   };
   const linePct = linePctMap[style.position] ?? 88;
-  const marginV = Math.max(0, Math.round((1 - linePct / 100) * 288 - fontSize));
+  // The geometric mapping lands the block ~one text line lower than the browser
+  // cue, so lift it back. Units are line-heights; 0 = the raw mapping.
+  const BURN_VSHIFT_LINES = 1.0;
+  const marginV = Math.max(0, Math.round(
+    (1 - linePct / 100) * 288 - fontSize + fontSize * BURN_VSHIFT_LINES
+  ));
 
   // Bold / italic
   const bold = style.fontStyle?.includes('bold') ? 1 : 0;
@@ -237,9 +250,9 @@ function buildSubtitlesFilter(srtPath, style) {
     `Bold=${bold}`,
     `Italic=${italic}`,
     `BorderStyle=${borderStyle}`,
-    `Outline=${borderStyle === 1 && hasOutline ? 0.6 : 0}`,
-    `Shadow=${borderStyle === 1 && hasShadow ? 3 : 0}`,
-    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 2 : 0}`,
+    `Outline=${borderStyle === 1 ? deco.bord : 0}`,
+    `Shadow=${borderStyle === 1 ? deco.shad : 0}`,
+    `Blur=${borderStyle === 1 ? deco.blur : 0}`,
     `Alignment=2`,  // bottom-center in SSA
     `MarginV=${marginV}`,
   ].join(',');
