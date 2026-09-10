@@ -197,9 +197,9 @@ function buildSubtitlesFilter(srtPath, style) {
   // (same constant as app.js). This makes the burned fraction of video height
   // identical to what the browser shows at any display size, including fullscreen.
   // Empirically, libass renders glyphs smaller than CSS ::cue at the same declared
-  // font-size, so we compensate by scaling up slightly (dividing by 420 instead of 400).
+  // font-size, so we compensate by scaling up slightly (dividing by 250 instead of 400).
   const WYSIWYG_REF_HEIGHT = 400;
-  const BURN_SIZE_SCALE = 420; // compensates for CSS vs libass size difference
+  const BURN_SIZE_SCALE = 250; // compensates for CSS vs libass size difference
   const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / BURN_SIZE_SCALE));
 
   // VTT uses line:X% (top of cue from top of video).
