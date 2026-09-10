@@ -173,14 +173,14 @@ function buildSRTString(segments, wrapChars, overrideTag) {
   }).join('\n');
 }
 
-// Mirrors the browser's ::cue text-shadow, in PlayResY=288 units.
-// CSS 'black'/'white' is a down-right 2px/3px-blur shadow plus faint 1px counter-
-// shadows, so the glyph edge stays crisp — a thin stroke carries the halo and
-// Shadow supplies the direction. 'dark-shadow' is CSS 3px 4px 8px: no stroke.
+// Approximates the browser's ::cue text-shadow, in PlayResY=288 units.
+// Scaling the CSS pixel offsets directly overshoots badly: libass applies Blur to
+// the shadow as well as the border, so a shadow sized like the CSS one smears into
+// a dark blob. The stroke carries the dark; Shadow only hints at the direction.
 function outlineDecoration(outline) {
   if (outline === 'none')        return { bord: 0,   shad: 0,   blur: 0 };
-  if (outline === 'dark-shadow') return { bord: 0,   shad: 3,   blur: 4 };
-  return { bord: 0.4, shad: 1.5, blur: 2 };
+  if (outline === 'dark-shadow') return { bord: 0,   shad: 2,   blur: 3 };
+  return { bord: 0.6, shad: 0.3, blur: 2 };
 }
 
 function buildSubtitlesFilter(srtPath, style) {
