@@ -60,7 +60,7 @@ async function burnSubtitlesWasm(videoBlobUrl, segments, filename, style, onProg
   if (style.bgOpacity > 0 && style.outline !== 'none') {
     overrideTag = style.outline === 'dark-shadow'
       ? '{\\bord0\\shad3\\blur2}'     // soft drop shadow on text
-      : '{\\bord0.6\\blur1.2\\shad0}'; // thin soft outline on text, no shadow
+      : '{\\bord0.6\\blur2\\shad0}'; // thin soft outline on text, no shadow
   }
   await ffmpeg.writeFile(srtName, buildSRTString(segments, style.wrapChars, overrideTag));
 
@@ -197,9 +197,9 @@ function buildSubtitlesFilter(srtPath, style) {
   // (same constant as app.js). This makes the burned fraction of video height
   // identical to what the browser shows at any display size, including fullscreen.
   // Empirically, libass renders glyphs smaller than CSS ::cue at the same declared
-  // font-size, so we compensate by scaling up slightly (dividing by 360 instead of 400).
+  // font-size, so we compensate by scaling up slightly (dividing by 420 instead of 400).
   const WYSIWYG_REF_HEIGHT = 400;
-  const BURN_SIZE_SCALE = 360; // compensates for CSS vs libass size difference
+  const BURN_SIZE_SCALE = 420; // compensates for CSS vs libass size difference
   const fontSize = Math.max(1, Math.round((style.fontSize || 24) * 288 / BURN_SIZE_SCALE));
 
   // VTT uses line:X% (top of cue from top of video).
@@ -239,7 +239,7 @@ function buildSubtitlesFilter(srtPath, style) {
     `BorderStyle=${borderStyle}`,
     `Outline=${borderStyle === 1 && hasOutline ? 0.6 : 0}`,
     `Shadow=${borderStyle === 1 && hasShadow ? 3 : 0}`,
-    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 1.2 : 0}`,
+    `Blur=${borderStyle === 1 && hasOutline && !hasShadow ? 2 : 0}`,
     `Alignment=2`,  // bottom-center in SSA
     `MarginV=${marginV}`,
   ].join(',');
