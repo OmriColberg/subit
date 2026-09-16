@@ -205,7 +205,11 @@ header {
   z-index: 100;
   min-width: 120px;
 }
-.user-menu button {
+.user-menu button,
+.user-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   width: 100%;
   padding: 10px 14px;
   background: transparent;
@@ -215,8 +219,11 @@ header {
   font-size: 13px;
   cursor: pointer;
   text-align: right;
+  text-decoration: none;
+  box-sizing: border-box;
 }
-.user-menu button:hover { background: var(--surface2); color: var(--accent); }
+.user-menu button:hover,
+.user-menu-link:hover { background: var(--surface2); color: var(--accent); }
 @media (max-width: 600px) {
   .user-email { display: none; }
 }

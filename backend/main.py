@@ -582,12 +582,13 @@ async def transcribe(
     srt_path.write_text(srt_content, encoding="utf-8")
 
     return JSONResponse({
-        "video_id":   video_id,
-        "filename":   file.filename,
-        "srt":        srt_content,
-        "segments":   segments,
-        "plain_text": plain_text,
-        "language":   result.get("language", "he"),
+        "video_id":     video_id,
+        "filename":     file.filename,
+        "srt":          srt_content,
+        "segments":     segments,
+        "plain_text":   plain_text,
+        "language":     result.get("language", "he"),
+        "credits_used": charged,
     })
 
 @app.get("/download/srt/{video_id}")

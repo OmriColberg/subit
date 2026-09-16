@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Subit — היסטוריית כתוביות</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    /* ── History page specific styles ─────────────────────────── */
+    .hist-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hist-title {
+      font-size: 22px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hist-title svg {
+      stroke: var(--accent);
+    }
+
+    /* Loading spinner */
+    #hist-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 60px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .hist-spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    #hist-empty {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 70px 24px;
+      color: var(--muted);
+      text-align: center;
+    }
+    #hist-empty svg { opacity: .4; }
+    #hist-empty p { font-size: 15px; line-height: 1.6; }
+    #hist-empty a {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      transition: opacity .2s;
+    }
+    #hist-empty a:hover { opacity: .85; }
+
+    /* Guest (not logged in) state */
+    #hist-guest {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 70px 24px;
+      text-align: center;
+    }
+    #hist-guest svg { opacity: .35; }
+    #hist-guest p { color: var(--muted); font-size: 15px; }
+    .guest-sign-in-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--font-he);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      transition: all .2s;
+    }
+    .guest-sign-in-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* History list */
+    #hist-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* History card */
+    .hist-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: border-color .2s;
+    }
+    .hist-card:hover { border-color: var(--border2); }
+
+    .hist-card-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 1;
+    }
+    .hist-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+    .hist-meta {
+      min-width: 0;
+      flex: 1;
+    }
+    .hist-filename {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 5px;
+    }
+    .hist-details {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .hist-date {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .hist-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .hist-badge-credits {
+      color: var(--accent);
+      border-color: rgba(245,66,66,.25);
+      background: rgba(245,66,66,.07);
+    }
+
+    /* Card action buttons */
+    .hist-card-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .hist-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-family: var(--font-he);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .hist-btn-primary {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+    }
+    .hist-btn-primary:hover { opacity: .85; }
+    .hist-btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--muted);
+    }
+    .hist-btn-ghost:hover { border-color: var(--danger); color: var(--danger); }
+
+    @media (max-width: 580px) {
+      .hist-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .hist-card-actions { width: 100%; }
+      .hist-btn { flex: 1; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+          fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="2" ry="2"/>
+          <path d="M7 2v20M17 2v20M2 12h20M2 7h5M17 7h5M2 17h5M17 17h5"/>
+        </svg>
+      </div>
+      <div>
+        <h1><a href="index.html" style="color:var(--accent);text-decoration:none">Subit</a></h1>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">מחולל כתוביות בעברית</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <!-- Auth UI (same as index.html) -->
+      <button class="auth-btn" id="auth-login-btn" onclick="signInWithGoogle()" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        התחבר
+      </button>
+      <div class="user-chip" id="user-chip" style="display:none" onclick="toggleUserMenu()">
+        <span class="user-credits" id="user-credits">—</span>
+        <span class="user-email" id="user-email"></span>
+        <div class="user-menu" id="user-menu" style="display:none">
+          <a href="index.html" class="user-menu-link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            דף הבית
+          </a>
+          <button onclick="signOut()">התנתק</button>
+        </div>
+      </div>
+      <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">יהי אור</button>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <div class="card">
+    <div class="hist-header-row">
+      <div class="hist-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 8V4H8"/>
+          <rect width="16" height="12" x="4" y="8" rx="2"/>
+          <path d="M2 14h2M20 14h2M15 13v2M9 13v2"/>
+        </svg>
+        היסטוריית כתוביות
+      </div>
+      <a href="index.html"
+        style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;
+               background:var(--accent);color:#fff;border-radius:8px;font-size:13px;
+               font-weight:700;text-decoration:none;transition:opacity .2s"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        כתוביות חדשות
+      </a>
+    </div>
+
+    <!-- Guest state (not logged in) -->
+    <div id="hist-guest" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:70px 24px;text-align:center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24"
+        fill="none" stroke="var(--muted)" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round" style="opacity:.35">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <p style="color:var(--muted);font-size:15px">יש להתחבר כדי לצפות בהיסטוריה</p>
+      <button class="guest-sign-in-btn" onclick="signInWithGoogle()">
+        <svg width="15" height="15" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        התחבר עם Google
+      </button>
+    </div>
+
+    <!-- Main section (logged in) -->
+    <div id="hist-main" style="display:none">
+      <!-- Loading -->
+      <div id="hist-loading">
+        <div class="hist-spinner"></div>
+        <span>טוען היסטוריה...</span>
+      </div>
+
+      <!-- Empty -->
+      <div id="hist-empty" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:70px 24px;text-align:center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24"
+          fill="none" stroke="var(--muted)" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round" style="opacity:.35">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <p style="color:var(--muted);font-size:15px;line-height:1.6">
+          עדיין לא יצרת כתוביות.<br>לאחר תמלול ראשון, הסרטונים שלך יופיעו כאן.
+        </p>
+        <a href="index.html">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          צור כתוביות עכשיו
+        </a>
+      </div>
+
+      <!-- List -->
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"><span class="toast-icon"></span><span id="toast-msg"></span></div>
+
+<script src="js/auth.js"></script>
+<script>
+  /* ── Minimal theme toggle (no app.js on this page) ── */
+  const moonSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+  const sunSvg  = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+  let isLight = localStorage.getItem('theme') !== 'dark';
+  function applyTheme() {
+    document.documentElement.classList.toggle('light', isLight);
+    document.getElementById('theme-btn').innerHTML =
+      isLight ? moonSvg + ' חושך על פני תהום' : sunSvg + ' יהי אור';
+  }
+  function toggleTheme() {
+    isLight = !isLight; applyTheme();
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  }
+  applyTheme();
+
+  /* ── Toast ── */
+  function toast(type, msg) {
+    const el = document.getElementById('toast');
+    const icons = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
+    document.getElementById('toast-msg').textContent = msg;
+    document.querySelector('.toast-icon').textContent = icons[type] || '';
+    el.className = `show ${type}`;
+    setTimeout(() => el.classList.remove('show'), 3500);
+  }
+</script>
+<script src="js/user.js"></script>
+</body>
+</html>
