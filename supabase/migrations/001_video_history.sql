@@ -18,6 +18,12 @@ CREATE TABLE IF NOT EXISTS video_history (
 CREATE INDEX IF NOT EXISTS video_history_user_created
   ON video_history (user_id, created_at DESC);
 
+-- Table-level privileges for the PostgREST roles. RLS (below) still limits
+-- WHICH rows each user can touch, but without these GRANTs the API layer gets
+-- "permission denied for table video_history" before RLS is even evaluated.
+-- Tables created manually in the SQL editor don't always inherit these.
+GRANT SELECT, INSERT, DELETE ON TABLE video_history TO authenticated;
+
 -- RLS: each user sees and writes only their own rows
 ALTER TABLE video_history ENABLE ROW LEVEL SECURITY;
 

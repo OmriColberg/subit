@@ -146,8 +146,10 @@ async function loadHistory() {
   showLoading(false);
 
   if (error) {
-    document.getElementById('hist-list').innerHTML =
-      `<p style="color:var(--danger);text-align:center;padding:40px">שגיאה בטעינת היסטוריה: ${error.message}</p>`;
+    // Show the friendly empty state rather than a raw DB error, but keep the
+    // real error in the console so it's still debuggable.
+    console.error('loadHistory failed:', error);
+    showEmpty();
     return;
   }
 
