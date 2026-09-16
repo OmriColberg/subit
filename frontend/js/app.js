@@ -300,6 +300,7 @@ async function uploadFile(file) {
     state.videoId = data.video_id;
     state.filename = data.filename;
     state.segments = data.segments;
+    const _creditsUsed = data.credits_used || 0;
 
     if (hint) {
       showProgress(true, 'מעדכן לפי הטקסט שסיפקת...');
@@ -310,6 +311,9 @@ async function uploadFile(file) {
       animateProgressSlow(92, 98);
       await autoAiFix(true);
     }
+
+    // Save to history after AI fix so the stored segments are final
+    saveToHistory(_creditsUsed);
 
     animateProgress(98, 100, 300); await sleep(300);
     stopTimer();
@@ -683,6 +687,30 @@ function onFsChange() {
 }
 document.addEventListener('fullscreenchange', onFsChange);
 document.addEventListener('webkitfullscreenchange', onFsChange);
+
+// ── HISTORY (Supabase) ────────────────────────────────────────────
+// Save the finished transcription to video_history in Supabase so the
+// user can access their past subtitles from the history page.
+// Runs fire-and-forget after the AI fix so the stored segments are final.
+async function saveToHistory(creditsUsed) {
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+  try {
+    const srtContent = state.segments
+      .map((s, i) => `${i + 1}\n${s.start} --> ${s.end}\n${s.text}\n`)
+      .join('\n');
+    await sb.from('video_history').insert({
+      user_id:      currentUser.id,
+      video_id:     state.videoId,
+      filename:     state.filename,
+      credits_used: creditsUsed,
+      srt_content:  srtContent,
+      segments:     state.segments,
+    });
+  } catch (e) {
+    // Non-fatal — the user still has their subtitles even if history save fails.
+    console.warn('saveToHistory failed:', e);
+  }
+}
 
 // ── PERSIST ───────────────────────────────────────────────────────
 async function persistSRT() {
