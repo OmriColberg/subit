@@ -92,16 +92,19 @@ async function refreshCredits() { await loadCredits(); }
 function renderAuthUI() {
   const loginBtn = document.getElementById('auth-login-btn');
   const chip     = document.getElementById('user-chip');
+  const histBtn  = document.getElementById('history-nav-btn');  // index.html only
 
   if (currentUser) {
     loginBtn.style.display = 'none';
     chip.style.display = 'flex';
+    if (histBtn) histBtn.style.display = 'inline-flex';
     document.getElementById('user-email').textContent = currentUser.email || '';
     document.getElementById('user-credits').textContent =
       currentCredits == null ? '—' : currentCredits;
   } else {
     loginBtn.style.display = 'flex';
     chip.style.display = 'none';
+    if (histBtn) histBtn.style.display = 'none';
   }
   updateStartButton();
 }

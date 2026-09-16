@@ -1264,7 +1264,10 @@ function tlDrawWave() {
   for (let x = 0; x < N; x++) { const h = Math.max(tlWavePeaks[N - 1 - x] * mid, 0.4); d += (x ? 'L' : 'M') + x + ' ' + (mid - h).toFixed(1) + ' '; }
   for (let x = N - 1; x >= 0; x--) { const h = Math.max(tlWavePeaks[N - 1 - x] * mid, 0.4); d += 'L' + x + ' ' + (mid + h).toFixed(1) + ' '; }
   d += 'Z';
-  host.innerHTML = `<svg viewBox="0 0 ${N} ${H}" preserveAspectRatio="none"><path d="${d}" fill="rgba(255,255,255,0.75)"/></svg>`;
+  // non-scaling-stroke keeps the outline a constant screen-pixel width despite
+  // the non-uniform viewBox scaling, so the white wave stays visible on light
+  // video backgrounds via a thin dark outline.
+  host.innerHTML = `<svg viewBox="0 0 ${N} ${H}" preserveAspectRatio="none"><path d="${d}" fill="rgba(255,255,255,0.85)" stroke="rgba(0,0,0,0.8)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
 async function tlRenderWave(dur) {
