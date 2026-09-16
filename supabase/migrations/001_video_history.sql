@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS video_history_user_created
 -- WHICH rows each user can touch, but without these GRANTs the API layer gets
 -- "permission denied for table video_history" before RLS is even evaluated.
 -- Tables created manually in the SQL editor don't always inherit these.
-GRANT SELECT, INSERT, DELETE ON TABLE video_history TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE video_history TO authenticated;
 
 -- RLS: each user sees and writes only their own rows
 ALTER TABLE video_history ENABLE ROW LEVEL SECURITY;
@@ -33,6 +33,12 @@ CREATE POLICY "users_select_own_history"
 
 CREATE POLICY "users_insert_own_history"
   ON video_history FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- UPDATE lets the editor auto-save changes back to an existing entry.
+CREATE POLICY "users_update_own_history"
+  ON video_history FOR UPDATE
+  USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "users_delete_own_history"

@@ -152,26 +152,6 @@
 
   <!-- Results -->
   <div id="results-section">
-    <!-- History-edit banner: shown when subtitles were loaded from the history
-         page. The original video isn't stored, so we offer to re-attach it. -->
-    <div id="history-attach-banner" style="display:none;align-items:center;gap:14px;flex-wrap:wrap;
-         background:var(--surface);border:1px solid var(--border2);border-radius:12px;
-         padding:14px 18px;margin-bottom:12px">
-      <span style="flex-shrink:0;color:var(--accent)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
-      </span>
-      <div style="flex:1;min-width:180px">
-        <div style="font-weight:700;font-size:14px;margin-bottom:2px">עורך כתוביות מההיסטוריה: <span id="history-attach-name" style="color:var(--accent)"></span></div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.5">
-          הכתוביות נטענו וניתנות לעריכה ולהורדה. כדי לצפות בסרטון ולצרוב את הכתוביות — צרף את קובץ הסרטון המקורי (ללא תמלול מחדש, ללא עלות).
-        </div>
-      </div>
-      <input type="file" id="attach-video-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg"
-        style="display:none" onchange="if(this.files.length)attachVideoForEditing(this.files[0])"/>
-      <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="document.getElementById('attach-video-input').click()">
-        <i data-lucide="video" class="lucide"></i> צרף סרטון
-      </button>
-    </div>
     <!-- סטטוס + קובץ חדש -->
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
       <div id="autosave-indicator"><div class="saved-dot"></div><span>נשמר</span></div>
@@ -199,7 +179,15 @@
       <div class="tab-content active" id="tab-editor">
         <!-- Video player -->
         <div id="video-no-file" class="video-no-file">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><i data-lucide="monitor-play" style="width:36px;height:36px;stroke:var(--muted);stroke-width:1.5"></i><span>הוידאו יופיע כאן לאחר העלאה — תוכל לצפות בכתוביות בזמן אמת</span></div>
+          <div id="video-no-file-default" style="display:flex;flex-direction:column;align-items:center;gap:8px"><i data-lucide="monitor-play" style="width:36px;height:36px;stroke:var(--muted);stroke-width:1.5"></i><span>הוידאו יופיע כאן לאחר העלאה — תוכל לצפות בכתוביות בזמן אמת</span></div>
+          <!-- Shown when editing from history: the video isn't stored, so offer
+               to attach the original file for preview + burn. -->
+          <div id="video-no-file-history" style="display:none;flex-direction:column;align-items:center;gap:12px;padding:8px 16px">
+            <i data-lucide="film" style="width:34px;height:34px;stroke:var(--accent);stroke-width:1.5"></i>
+            <span style="max-width:440px">עריכת הכתוביות של <b id="history-attach-name" style="color:var(--accent)"></b> — הכתוביות טעונות וניתנות לעריכה ולהורדה. לצפייה בסרטון ולצריבת כתוביות, צרף את קובץ הסרטון המקורי (ללא תמלול מחדש, ללא עלות).</span>
+            <input type="file" id="attach-video-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg" style="display:none" onchange="if(this.files.length)attachVideoForEditing(this.files[0])"/>
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('attach-video-input').click()"><i data-lucide="video" class="lucide"></i> צרף סרטון</button>
+          </div>
         </div>
         <div class="video-wrap" id="video-wrap" style="display:none">
           <div class="video-inner" id="video-inner">

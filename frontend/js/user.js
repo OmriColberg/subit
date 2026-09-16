@@ -135,6 +135,7 @@ function continueEditing(id) {
   }
   try {
     localStorage.setItem('subit_edit_entry', JSON.stringify({
+      id: entry.id,
       video_id: entry.video_id,
       filename: entry.filename,
       segments: entry.segments,
