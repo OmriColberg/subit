@@ -23,7 +23,7 @@
 const API = 'https://subit-ifhy.onrender.com';
 
 // ── STATE ─────────────────────────────────────────────────────────
-let state = { videoId: null, filename: null, segments: [], videoBlobUrl: null };
+let state = { videoId: null, filename: null, segments: [], videoBlobUrl: null, historyId: null };
 let selectedFile = null;
 
 // ── UNDO STACK ────────────────────────────────────────────────────
@@ -395,15 +395,20 @@ function loadFromHistory() {
   state.filename = entry.filename || null;
   state.segments = entry.segments;
   state.videoBlobUrl = null;
+  state.historyId = entry.id || null;   // edits will update this same row
 
-  // Swap the upload UI for the editor, opened at step 3.
+  // Swap the upload UI for the editor, opened at step 3. The video placeholder
+  // itself carries the history message + "attach video" button.
   document.getElementById('upload-card').style.display = 'none';
-  document.getElementById('history-attach-banner').style.display = 'flex';
-  document.getElementById('history-attach-name').textContent = state.filename || 'הסרטון';
+  const def = document.getElementById('video-no-file-default');
+  const hist = document.getElementById('video-no-file-history');
+  if (def) def.style.display = 'none';
+  if (hist) hist.style.display = 'flex';
+  const nameEl = document.getElementById('history-attach-name');
+  if (nameEl) nameEl.textContent = state.filename || 'הסרטון';
   showResults();
   setStep(3);
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  toast('info', 'הכתוביות נטענו מההיסטוריה');
 }
 
 // Attach the original video file to an editor loaded from history. This only
@@ -421,8 +426,7 @@ function attachVideoForEditing(file) {
   if (!state.filename) state.filename = file.name;
   // Reset timeline caches so the filmstrip / waveform rebuild for the new blob.
   tlThumbs = []; tlThumbsForBlob = null;
-  document.getElementById('history-attach-banner').style.display = 'none';
-  showResults();
+  showResults();  // video present now → placeholder is hidden, burn button shown
   toast('success', 'הסרטון צורף — אפשר לצפות ולצרוב כתוביות');
 }
 
@@ -753,28 +757,53 @@ document.addEventListener('webkitfullscreenchange', onFsChange);
 // Save the finished transcription to video_history in Supabase so the
 // user can access their past subtitles from the history page.
 // Runs fire-and-forget after the AI fix so the stored segments are final.
+function segmentsToSrt() {
+  return state.segments
+    .map((s, i) => `${i + 1}\n${s.start} --> ${s.end}\n${s.text}\n`)
+    .join('\n');
+}
+
 async function saveToHistory(creditsUsed) {
   if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
   try {
-    const srtContent = state.segments
-      .map((s, i) => `${i + 1}\n${s.start} --> ${s.end}\n${s.text}\n`)
-      .join('\n');
-    await sb.from('video_history').insert({
+    // Insert and read back the new row id, so later edits update THIS row
+    // instead of creating duplicates.
+    const { data, error } = await sb.from('video_history').insert({
       user_id:      currentUser.id,
       video_id:     state.videoId,
       filename:     state.filename,
       credits_used: creditsUsed,
-      srt_content:  srtContent,
+      srt_content:  segmentsToSrt(),
       segments:     state.segments,
-    });
+    }).select('id').single();
+    if (error) throw error;
+    if (data) state.historyId = data.id;
   } catch (e) {
     // Non-fatal — the user still has their subtitles even if history save fails.
     console.warn('saveToHistory failed:', e);
   }
 }
 
+// Persist edits back to the existing history row (segments + SRT). Called from
+// persistSRT so every autosave keeps history in sync; no-ops when there's no
+// row yet or the user isn't signed in.
+async function updateHistory() {
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+  if (!state.historyId) return;
+  try {
+    await sb.from('video_history')
+      .update({ segments: state.segments, srt_content: segmentsToSrt() })
+      .eq('id', state.historyId);
+  } catch (e) {
+    console.warn('updateHistory failed:', e);
+  }
+}
+
 // ── PERSIST ───────────────────────────────────────────────────────
 async function persistSRT() {
+  // Keep the Supabase history row in sync with every edit (independent of the
+  // ephemeral server-side copy below).
+  updateHistory();
   if (!state.videoId) return;
   await fetch(`${API}/save-srt`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1101,7 +1130,14 @@ const MIN_SEG_SEC = 0.2;
 
 function tlDuration() {
   const v = document.getElementById('video-player');
-  return (v && isFinite(v.duration) && v.duration > 0) ? v.duration : 0;
+  if (v && isFinite(v.duration) && v.duration > 0) return v.duration;
+  // No video loaded (e.g. editing from history): derive the length from the
+  // subtitles themselves so the timeline stays usable for time-based editing.
+  if (state.segments && state.segments.length) {
+    const lastEnd = Math.max(...state.segments.map(s => srtToSec(s.end) || 0));
+    if (lastEnd > 0) return lastEnd + 2;  // small tail so the last block isn't flush against the edge
+  }
+  return 0;
 }
 
 function buildTimeline() {
@@ -1924,7 +1960,7 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 // ── RESET ─────────────────────────────────────────────────────────
 function resetAll() {
   closeModal('confirm-modal'); stopTimer(); undoStack.length = 0;
-  state = { videoId: null, filename: null, segments: [] }; selectedFile = null;
+  state = { videoId: null, filename: null, segments: [], videoBlobUrl: null, historyId: null }; selectedFile = null;
   document.getElementById('results-section').style.display = 'none';
   document.getElementById('estimate-box').style.display = 'none';
   document.getElementById('drop-zone').style.display = 'block';
