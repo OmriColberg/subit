@@ -91,7 +91,16 @@ function renderCard(entry) {
       </div>
     </div>
     <div class="hist-card-actions">
-      <button class="hist-btn hist-btn-primary" onclick="downloadHistorySRT(histEntries['${entry.id}'])">
+      <button class="hist-btn hist-btn-primary" onclick="continueEditing('${entry.id}')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        המשך עריכה
+      </button>
+      <button class="hist-btn hist-btn-ghost" onclick="downloadHistorySRT(histEntries['${entry.id}'])">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
@@ -99,9 +108,9 @@ function renderCard(entry) {
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        הורד SRT
+        SRT
       </button>
-      <button class="hist-btn hist-btn-ghost" onclick="deleteEntry('${entry.id}', this.closest('.hist-card'))">
+      <button class="hist-btn hist-btn-icon" title="מחק" onclick="deleteEntry('${entry.id}', this.closest('.hist-card'))">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
@@ -110,11 +119,31 @@ function renderCard(entry) {
           <path d="M10 11v6M14 11v6"/>
           <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
         </svg>
-        מחק
       </button>
     </div>
   `;
   return card;
+}
+
+// ── Continue editing: stash the entry and jump to the editor ───────
+function continueEditing(id) {
+  const entry = histEntries[id];
+  if (!entry) return;
+  if (!entry.segments || !entry.segments.length) {
+    alert('אין כתוביות שמורות לרשומה זו');
+    return;
+  }
+  try {
+    localStorage.setItem('subit_edit_entry', JSON.stringify({
+      video_id: entry.video_id,
+      filename: entry.filename,
+      segments: entry.segments,
+    }));
+  } catch (e) {
+    alert('לא ניתן לפתוח בעורך: ' + e.message);
+    return;
+  }
+  window.location.href = 'index.html';
 }
 
 // ── Empty / loading states ─────────────────────────────────────────
