@@ -18,7 +18,7 @@
     <div class="logo">
       <div class="logo-icon"><i data-lucide="film" class="lucide"></i></div>
       <div>
-        <h1><span>Subit</span></h1>
+        <h1><a href="index.html" style="color:inherit;text-decoration:none"><span>Subit</span></a></h1>
         <div style="font-size:12px;color:var(--muted);margin-top:2px;font-weight:400">מחולל כתוביות בעברית</div>
       </div>
     </div>
@@ -152,6 +152,26 @@
 
   <!-- Results -->
   <div id="results-section">
+    <!-- History-edit banner: shown when subtitles were loaded from the history
+         page. The original video isn't stored, so we offer to re-attach it. -->
+    <div id="history-attach-banner" style="display:none;align-items:center;gap:14px;flex-wrap:wrap;
+         background:var(--surface);border:1px solid var(--border2);border-radius:12px;
+         padding:14px 18px;margin-bottom:12px">
+      <span style="flex-shrink:0;color:var(--accent)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+      </span>
+      <div style="flex:1;min-width:180px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:2px">עורך כתוביות מההיסטוריה: <span id="history-attach-name" style="color:var(--accent)"></span></div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">
+          הכתוביות נטענו וניתנות לעריכה ולהורדה. כדי לצפות בסרטון ולצרוב את הכתוביות — צרף את קובץ הסרטון המקורי (ללא תמלול מחדש, ללא עלות).
+        </div>
+      </div>
+      <input type="file" id="attach-video-input" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp3,.wav,.m4a,.ogg"
+        style="display:none" onchange="if(this.files.length)attachVideoForEditing(this.files[0])"/>
+      <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="document.getElementById('attach-video-input').click()">
+        <i data-lucide="video" class="lucide"></i> צרף סרטון
+      </button>
+    </div>
     <!-- סטטוס + קובץ חדש -->
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
       <div id="autosave-indicator"><div class="saved-dot"></div><span>נשמר</span></div>

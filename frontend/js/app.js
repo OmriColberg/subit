@@ -344,13 +344,20 @@ function showResults() {
   // New video: reset timeline scale/selection so it refits to the new duration
   tlPps = 0; tlSelectedIdx = null;
   if (editorView === 'timeline') requestAnimationFrame(buildTimeline);
+
+  // The download row (SRT download) is available whenever we have subtitles,
+  // even without a local video — e.g. when editing an entry from history.
+  document.getElementById('download-row').style.display = 'block';
+  const hasVideo = !!state.videoBlobUrl;
+  // Burning needs the local video file, so hide that button until one is present.
+  document.getElementById('burn-btn').style.display = hasVideo ? '' : 'none';
+
   // Load video player
-  if (state.videoBlobUrl) {
+  if (hasVideo) {
     const player = document.getElementById('video-player');
     player.src = state.videoBlobUrl;
     document.getElementById('video-no-file').style.display = 'none';
     document.getElementById('video-wrap').style.display = 'flex';
-    document.getElementById('download-row').style.display = 'block';
     document.getElementById('video-wrap').classList.add('has-video');  // enables hover-show of fs-btn
     // Detect orientation → portrait gets special handling; landscape stays
     // class-less so it behaves exactly like the original layout.
@@ -361,8 +368,62 @@ function showResults() {
       applyOrientationDefaults(isPortrait);
     }, { once: true });
     setTimeout(applyBurnStylesToOverlay, 100);
+  } else {
+    // No local video (loaded from history): show the placeholder instead.
+    document.getElementById('video-wrap').style.display = 'none';
+    document.getElementById('video-no-file').style.display = 'block';
   }
 
+}
+
+// ── LOAD FROM HISTORY ─────────────────────────────────────────────
+// Entry point used when the user clicks "המשך עריכה" on the history page.
+// The video file itself isn't stored (only the subtitles), so we restore the
+// segments into the editor and invite the user to re-attach the local video
+// for preview + burn. No re-transcription and no credits are involved.
+function loadFromHistory() {
+  let raw = null;
+  try { raw = localStorage.getItem('subit_edit_entry'); } catch { raw = null; }
+  if (!raw) return;
+  try { localStorage.removeItem('subit_edit_entry'); } catch { }
+
+  let entry;
+  try { entry = JSON.parse(raw); } catch { return; }
+  if (!entry || !Array.isArray(entry.segments) || !entry.segments.length) return;
+
+  state.videoId = entry.video_id || null;
+  state.filename = entry.filename || null;
+  state.segments = entry.segments;
+  state.videoBlobUrl = null;
+
+  // Swap the upload UI for the editor, opened at step 3.
+  document.getElementById('upload-card').style.display = 'none';
+  document.getElementById('history-attach-banner').style.display = 'flex';
+  document.getElementById('history-attach-name').textContent = state.filename || 'הסרטון';
+  showResults();
+  setStep(3);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('info', 'הכתוביות נטענו מההיסטוריה');
+}
+
+// Attach the original video file to an editor loaded from history. This only
+// wires up the local file for preview + burn — it does NOT re-transcribe.
+function attachVideoForEditing(file) {
+  if (!file) return;
+  const okType = file.type.startsWith('video') || file.type.startsWith('audio');
+  const okExt = /\.(mp4|mov|avi|mkv|webm|mp3|wav|m4a|ogg)$/i.test(file.name);
+  if (!okType && !okExt) {
+    toast('error', 'סוג קובץ לא נתמך');
+    return;
+  }
+  if (state.videoBlobUrl) URL.revokeObjectURL(state.videoBlobUrl);
+  state.videoBlobUrl = URL.createObjectURL(file);
+  if (!state.filename) state.filename = file.name;
+  // Reset timeline caches so the filmstrip / waveform rebuild for the new blob.
+  tlThumbs = []; tlThumbsForBlob = null;
+  document.getElementById('history-attach-banner').style.display = 'none';
+  showResults();
+  toast('success', 'הסרטון צורף — אפשר לצפות ולצרוב כתוביות');
 }
 
 function formatTimeDisplay(ts) {
@@ -1904,6 +1965,10 @@ function initIcons() {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 initIcons(); // Script is at bottom so DOM is ready
+
+// If the user arrived here via "המשך עריכה" on the history page, restore the
+// stored subtitles into the editor.
+loadFromHistory();
 
 let toastTimer;
 function toast(type, msg) {
